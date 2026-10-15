@@ -97,6 +97,57 @@ Regenerate the client after schema changes (the Docker build also generates it):
 docker compose -f compose.yaml -f compose.dev.yaml exec backend npm run db:generate
 ```
 
+## Phase 4: administrator access
+
+Authentication runs in the backend with Better Auth and the existing Prisma 7/PostgreSQL database. Passwords use Better Auth's scrypt hashing. The backend stores opaque sessions in PostgreSQL and sends them in `HttpOnly`, `SameSite=Lax` cookies; `Secure` is enabled in production. Session lifetime is 12 hours with periodic refresh. Signup and password reset are not exposed. The Admin plugin supplies server-side role fields, while the public auth route only allows sign-in, sign-out, and current-session checks.
+
+Admin API requests independently verify the database session and the server-controlled `admin` role. The `user` role is the non-admin default and leaves a clear place for customer access in a later phase. The dashboard is available at `/admin`, and login is at `/admin/sign-in`. Enquiries are returned in pages of 20 and only the fields needed for follow-up are selected. The auth API accepts same-origin POST requests, validates email and password input, limits request size, and stores rate-limit counters in PostgreSQL (five sign-in attempts per IP per minute). Nginx supplies the client address used by the limiter; if another proxy is added later, its trusted address handling must be reviewed.
+
+### Configure the auth secret in Ubuntu
+
+Keep `.env.example` as the template and add these two values to the VM's ignored `.env` file. Use the public origin at which the browser opens the site. Generate the secret in the VM; do not paste it into Git, this README, or a browser variable:
+
+```bash
+cd /home/vagrant/event-management-platform
+openssl rand -base64 48
+nano .env
+```
+
+Add `BETTER_AUTH_URL=http://localhost:8080` and `BETTER_AUTH_SECRET=<generated value>` to `.env`, save, and restart the development services only when you choose to load the new Compose environment. For production, use the site's HTTPS origin and a separately generated secret. Do not reuse the Docker build-only value.
+
+Apply the additive Phase 4 migration and generate the client from inside the backend container:
+
+```bash
+docker compose -f compose.yaml -f compose.dev.yaml exec backend npm run db:deploy
+docker compose -f compose.yaml -f compose.dev.yaml exec backend npm run db:generate
+```
+
+Create the first administrator interactively. The command prompts twice for a hidden password; it is not placed in shell history or printed. Rerunning it for the same administrator makes no changes. It refuses to promote a pre-existing non-admin account and never resets a password:
+
+```bash
+docker compose -f compose.yaml -f compose.dev.yaml exec -it backend npm run auth:bootstrap -- --email admin@example.com --name "TSG Events Admin"
+```
+
+If the CLI reports an existing account, stop and verify that it is the intended administrator. Sign in at `http://localhost:8080/admin/sign-in`; use **Sign out** to revoke the active database session. The public site and contact form remain available at the root and `/contact`.
+
+### Authentication and admin checks
+
+Run unit tests and PostgreSQL integration tests against the isolated test Compose project. The test database uses its own named volume and `event_management_test` database; it does not share the development volume:
+
+```bash
+docker compose -f compose.yaml -f compose.dev.yaml -f compose.test.yaml run --rm backend sh -lc 'npm run db:generate && npm run db:deploy && npm test'
+```
+
+Run backend lint/type-check/build and frontend lint/type-check/test/build using the quality-check commands below. Then verify the browser flow:
+
+1. Visit `/admin` while signed out; it should send you to the sign-in page.
+2. Sign in with the bootstrap admin and confirm the dashboard opens.
+3. Submit a public enquiry from `/contact`; confirm the dashboard lists it.
+4. Sign out, then request `/api/admin/enquiries`; it should return `401`.
+5. Sign in with a non-admin account if one is introduced later; the dashboard/API should deny it.
+
+Never test with real customer details in the isolated test database. The Phase 4 admin interface is read-only; it has no delete, export, customer registration, password reset, or user-management interface.
+
 ## Quality checks
 
 The frontend and backend each have lint, type-check, test, and production build scripts. Run them in the development containers:

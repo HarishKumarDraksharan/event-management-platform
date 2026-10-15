@@ -23,6 +23,8 @@ jobs:
       CI: "true"
       DATABASE_URL: postgresql://event_app:ci_password@localhost:5432/event_management_test?schema=public
       TEST_DATABASE_URL: postgresql://event_app:ci_password@localhost:5432/event_management_test?schema=public
+      BETTER_AUTH_URL: http://localhost:8080
+      BETTER_AUTH_SECRET: ci-only-secret-not-used-outside-this-workflow-000000000000
       NEXT_TELEMETRY_DISABLED: "1"
     services:
       postgres:

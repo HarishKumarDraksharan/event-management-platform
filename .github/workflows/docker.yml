@@ -21,6 +21,8 @@ jobs:
       POSTGRES_DB: event_management
       POSTGRES_USER: event_app
       POSTGRES_PASSWORD: ci_password
+      BETTER_AUTH_URL: http://localhost:8080
+      BETTER_AUTH_SECRET: ci-only-secret-not-used-outside-this-workflow-000000000000
     steps:
       - name: Check out repository
         uses: actions/checkout@v4
