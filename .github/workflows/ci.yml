@@ -140,13 +140,19 @@ jobs:
     env:
       SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
     steps:
+      - name: Detect workflow cancellation
+        id: cancellation
+        if: ${{ cancelled() }}
+        run: echo "cancelled=true" >> "$GITHUB_OUTPUT"
+
       - name: Determine pipeline result
         id: result
+        if: ${{ always() }}
         env:
           BACKEND_RESULT: ${{ needs.backend-tests.result }}
           FRONTEND_RESULT: ${{ needs.frontend-tests.result }}
           IMAGES_RESULT: ${{ needs.build-images.result }}
-          RUN_CANCELLED: ${{ cancelled() }}
+          RUN_CANCELLED: ${{ steps.cancellation.outputs.cancelled == 'true' }}
         run: |
           if [[ "$BACKEND_RESULT" == "failure" || "$FRONTEND_RESULT" == "failure" || "$IMAGES_RESULT" == "failure" ]]; then
             status="failure"
@@ -160,12 +166,12 @@ jobs:
           echo "status=$status" >> "$GITHUB_OUTPUT"
 
       - name: Warn when Slack is not configured
-        if: ${{ env.SLACK_WEBHOOK_URL == '' }}
+        if: ${{ always() && env.SLACK_WEBHOOK_URL == '' }}
         run: echo "::warning::Slack notification skipped; configure the repository Actions secret SLACK_WEBHOOK_URL."
 
       - name: Send consolidated pipeline notification
         id: send
-        if: ${{ env.SLACK_WEBHOOK_URL != '' }}
+        if: ${{ always() && env.SLACK_WEBHOOK_URL != '' }}
         continue-on-error: true
         env:
           PROJECT_NAME: TSG EVENTS
