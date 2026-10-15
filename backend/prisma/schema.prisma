@@ -6,3 +6,16 @@ generator client {
 datasource db {
   provider = "postgresql"
 }
+
+model Enquiry {
+  id             String   @id @default(uuid()) @db.Uuid
+  submissionKey  String   @unique @db.Uuid
+  name           String   @db.VarChar(100)
+  email          String   @db.VarChar(254)
+  phone          String?  @db.VarChar(25)
+  eventType      String   @db.VarChar(40)
+  eventDate      DateTime? @db.Date
+  guestCount     Int?
+  message        String   @db.VarChar(3000)
+  createdAt      DateTime @default(now()) @db.Timestamptz(6)
+}

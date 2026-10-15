@@ -57,6 +57,10 @@ jobs:
         working-directory: backend
         run: npm run db:generate
 
+      - name: Apply committed database migrations to the CI PostgreSQL service
+        working-directory: backend
+        run: npm run db:deploy
+
       - name: Lint backend
         working-directory: backend
         run: npm run lint

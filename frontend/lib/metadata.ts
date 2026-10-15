@@ -1,4 +1,4 @@
 export const siteMetadata = {
-  title: "TSG EVENTS | Thoughtful celebrations, beautifully planned",
-  description: "A placeholder event management website for TSG EVENTS. Business details will be added when supplied.",
+  title: { default: "TSG EVENTS | Events, thoughtfully planned", template: "%s | TSG EVENTS" },
+  description: "TSG EVENTS — Thoughtful event planning for weddings, corporate gatherings, birthdays and private celebrations.",
 };

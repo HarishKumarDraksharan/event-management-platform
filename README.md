@@ -83,9 +83,15 @@ docker compose -f compose.yaml -f compose.dev.yaml exec nginx nginx -t
 
 ## Database and Prisma
 
-PostgreSQL data is stored in the `postgres_data` named volume and survives normal container recreation. The Prisma schema is intentionally empty apart from its PostgreSQL provider and generated client configuration; domain models and migrations will be introduced with their features in later phases.
+PostgreSQL data is stored in the `postgres_data` named volume and survives normal container recreation. Phase 3 adds an `Enquiry` model and an additive migration at `backend/prisma/migrations/20261015000000_add_enquiries`. The migration creates one table and its indexes; it does not alter or remove existing tables or rows.
 
-After changing the schema, regenerate the client in the backend container:
+Before enabling enquiry submissions against an existing database, review the migration and apply it with Prisma's deploy command. This command applies pending committed migrations and does not reset the database:
+
+```bash
+docker compose -f compose.yaml -f compose.dev.yaml exec backend npm run db:deploy
+```
+
+Regenerate the client after schema changes (the Docker build also generates it):
 
 ```bash
 docker compose -f compose.yaml -f compose.dev.yaml exec backend npm run db:generate
@@ -111,7 +117,7 @@ docker compose -f compose.yaml -f compose.dev.yaml exec backend env NODE_ENV=pro
 For the backend PostgreSQL integration test, use the isolated test Compose overlay, which sets a separate database and volume:
 
 ```bash
-docker compose -f compose.yaml -f compose.dev.yaml -f compose.test.yaml run --rm backend sh -lc 'npm run db:generate && npm test'
+docker compose -f compose.yaml -f compose.dev.yaml -f compose.test.yaml run --rm backend sh -lc 'npm run db:generate && npm run db:deploy && npm test'
 ```
 
 The integration test runs when `TEST_DATABASE_URL` is set; without it, the database-specific test is skipped while unit tests still cover both healthy and failed database probes. The tests do not modify the development database volume.
@@ -155,8 +161,12 @@ Only add ECR publishing and deployment steps after these resources, authenticati
 
 ## Phase status
 
-**Phase 1 foundation:** Vagrant, Docker Compose, frontend/backend skeletons, placeholder homepage, PostgreSQL/Prisma initialization, and Nginx routing.
+**Phase 1 foundation:** Vagrant, Docker Compose, frontend/backend skeletons, PostgreSQL/Prisma initialization, and Nginx routing.
 
-**Phase 2 quality and CI:** lint, TypeScript checks, unit tests, an optional PostgreSQL health integration test, lockfile-based installs, GitHub Actions, Compose validation, and production image builds.
+**Phase 2 quality and CI:** lint, TypeScript checks, unit tests, PostgreSQL health integration, lockfile-based installs, GitHub Actions, Compose validation, and production image builds.
 
-**Planned later:** public service and portfolio pages (Phase 3); authentication/admin (Phase 4); customer portal and quotation workflows (Phase 5); payments and private media (Phase 6); Terraform and AWS (Phase 7). No paid services or AWS resources are configured.
+**Phase 3 public website:** responsive TSG EVENTS pages, sample portfolio artwork, and the enquiry API backed by PostgreSQL/Prisma. Apply the committed migration before accepting enquiries in an existing environment.
+
+The portfolio visuals in `frontend/public/images/` are original SVG concept illustrations labelled as sample artwork. They are local, replaceable placeholders; no third-party image URLs, client names, event history, or contact details are presented as real business content.
+
+**Planned later:** authentication/admin (Phase 4); customer portal and quotation workflows (Phase 5); payments and private media (Phase 6); Terraform and AWS (Phase 7). No paid services or AWS resources are configured.
