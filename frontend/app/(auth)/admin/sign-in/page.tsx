@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
-import { AdminSignInForm } from "../../../components/admin-sign-in-form";
+import Link from "next/link";
+import { AdminSignInForm } from "../../../../components/admin-sign-in-form";
 
 export const metadata: Metadata = {
   title: "Administrator sign in",
@@ -11,6 +12,7 @@ export default function AdminSignInPage() {
   return (
     <main id="main-content" className="admin-shell">
       <section className="admin-card" aria-labelledby="admin-sign-in-title">
+        <Link className="admin-signin-brand" href="/admin/sign-in"><span className="brand-mark" aria-hidden="true">T</span><span>TSG EVENTS <small>ADMIN</small></span></Link>
         <p className="eyebrow">TSG EVENTS · ADMINISTRATION</p>
         <h1 id="admin-sign-in-title">Welcome <em>back.</em></h1>
         <p className="admin-lede">Sign in to review incoming event enquiries.</p>

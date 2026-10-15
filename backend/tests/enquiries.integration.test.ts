@@ -4,16 +4,11 @@ import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { randomUUID } from "node:crypto";
 import { createEnquiryHandler } from "../lib/enquiries";
 
-const testDatabaseUrl = process.env.TEST_DATABASE_URL;
-if (process.env.CI === "true" && !testDatabaseUrl) {
-  throw new Error("TEST_DATABASE_URL must be configured for the enquiry PostgreSQL integration test");
-}
+const testDatabaseUrl = process.env.TEST_DATABASE_URL!;
 
-describe.skipIf(!testDatabaseUrl)("POST /api/enquiries with PostgreSQL", () => {
+describe("POST /api/enquiries with PostgreSQL", () => {
   let prisma: PrismaClient | undefined;
-  beforeAll(() => {
-    if (testDatabaseUrl) prisma = new PrismaClient({ adapter: new PrismaPg({ connectionString: testDatabaseUrl }) });
-  });
+  beforeAll(() => { prisma = new PrismaClient({ adapter: new PrismaPg({ connectionString: testDatabaseUrl }) }); });
   afterAll(async () => { if (prisma) await prisma.$disconnect(); });
 
   it("persists an enquiry and makes a retried idempotency key safe", async () => {

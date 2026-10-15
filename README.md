@@ -195,6 +195,14 @@ Start them again with the development command above. To stop the VM, run `exit` 
 
 Use feature branches, open a pull request for review, wait for CI checks before merging, and merge validated work to `main`. The `CI/CD` workflow runs separate backend and frontend jobs on pushes to `main`, `development`, and `feature/**`, and on pull requests targeting `main` or `development`. The backend job uses a PostgreSQL service and requires the health integration test to connect; both app jobs install from their committed lockfiles. Only after both pass does CI call the reusable Docker workflow to validate Compose and build the production images tagged with the commit SHA. Images are not pushed and the workflow does not authenticate to AWS.
 
+### Slack CI notifications
+
+The `CI/CD` workflow sends one consolidated Slack Incoming Webhook notification after the backend tests, frontend tests, and reusable Docker image validation finish. It reports success only when all three jobs succeed; failures, skipped required jobs, and cancellations are reported as failure or cancelled. The reusable Docker workflow does not send a separate notification, preventing duplicates. Slack delivery errors do not change the CI result. If the webhook secret is absent, the notification is skipped and the Actions log shows a safe warning. Repository secrets are not exposed to pull requests from forks, so those runs cannot send Slack notifications.
+
+Configure the repository secret in **GitHub → Settings → Secrets and variables → Actions → Repository secrets → New repository secret**. Set its name to `SLACK_WEBHOOK_URL` and paste the Slack Incoming Webhook URL into the secret value field. Do not add the URL to workflow YAML, repository variables, or this README.
+
+To test delivery, push a harmless commit to a branch matching `feature/**` or open a pull request targeting `main` or `development`. After the required jobs finish, confirm one Slack message names the workflow, branch, short commit SHA, trigger, and final status and links to the Actions run. A normal passing run tests success delivery; failure and cancellation messages can be confirmed from corresponding failed or cancelled runs.
+
 ### AWS deployment readiness
 
 The `Deploy to AWS` job in the reusable Docker workflow is a fail-closed scaffold, not an active deployment. It is skipped unless the repository variable `AWS_DEPLOYMENT_ENABLED` is explicitly set to `true` on a push to `main`; even then, it stops with an error until deployment steps are implemented. It has no AWS credentials or OIDC permissions, and image publishing remains disabled.

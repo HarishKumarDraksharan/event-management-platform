@@ -128,3 +128,93 @@ jobs:
     uses: ./.github/workflows/docker.yml
     with:
       image_tag: ${{ github.sha }}
+
+  slack-notification:
+    name: Notify Slack
+    runs-on: ubuntu-latest
+    needs: [backend-tests, frontend-tests, build-images]
+    if: ${{ always() }}
+    continue-on-error: true
+    permissions:
+      contents: read
+    env:
+      SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
+    steps:
+      - name: Determine pipeline result
+        id: result
+        env:
+          BACKEND_RESULT: ${{ needs.backend-tests.result }}
+          FRONTEND_RESULT: ${{ needs.frontend-tests.result }}
+          IMAGES_RESULT: ${{ needs.build-images.result }}
+          RUN_CANCELLED: ${{ cancelled() }}
+        run: |
+          if [[ "$BACKEND_RESULT" == "failure" || "$FRONTEND_RESULT" == "failure" || "$IMAGES_RESULT" == "failure" ]]; then
+            status="failure"
+          elif [[ "$RUN_CANCELLED" == "true" || "$BACKEND_RESULT" == "cancelled" || "$FRONTEND_RESULT" == "cancelled" || "$IMAGES_RESULT" == "cancelled" ]]; then
+            status="cancelled"
+          elif [[ "$BACKEND_RESULT" == "success" && "$FRONTEND_RESULT" == "success" && "$IMAGES_RESULT" == "success" ]]; then
+            status="success"
+          else
+            status="failure"
+          fi
+          echo "status=$status" >> "$GITHUB_OUTPUT"
+
+      - name: Warn when Slack is not configured
+        if: ${{ env.SLACK_WEBHOOK_URL == '' }}
+        run: echo "::warning::Slack notification skipped; configure the repository Actions secret SLACK_WEBHOOK_URL."
+
+      - name: Send consolidated pipeline notification
+        id: send
+        if: ${{ env.SLACK_WEBHOOK_URL != '' }}
+        continue-on-error: true
+        env:
+          PROJECT_NAME: TSG EVENTS
+          WORKFLOW_NAME: ${{ github.workflow }}
+          BRANCH_NAME: ${{ github.head_ref || github.ref_name }}
+          COMMIT_SHA: ${{ github.sha }}
+          TRIGGER_EVENT: ${{ github.event_name == 'pull_request' && 'pull request' || github.event_name }}
+          PIPELINE_STATUS: ${{ steps.result.outputs.status }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: |
+          short_sha="${COMMIT_SHA:0:7}"
+          payload="$(jq -n \
+            --arg project "$PROJECT_NAME" \
+            --arg workflow "$WORKFLOW_NAME" \
+            --arg branch "$BRANCH_NAME" \
+            --arg sha "$short_sha" \
+            --arg event "$TRIGGER_EVENT" \
+            --arg status "$PIPELINE_STATUS" \
+            --arg run_url "$RUN_URL" \
+            '{text: ("*" + $project + "* — *" + $status + "*\nWorkflow: " + $workflow + "\nBranch: `" + $branch + "`\nCommit: `" + $sha + "`\nTrigger: " + $event + "\n<" + $run_url + "|View workflow run>")}')"
+
+          if http_status="$(curl --silent --output /dev/null --write-out '%{http_code}' --max-time 15 --request POST --header 'Content-Type: application/json' --data "$payload" "$SLACK_WEBHOOK_URL" 2>/dev/null)"; then
+            if [[ "$http_status" == 2?? ]]; then
+              echo "Slack notification sent."
+              exit 0
+            fi
+            echo "::warning::Slack notification delivery failed (HTTP $http_status); CI status is unchanged."
+          else
+            echo "::warning::Slack notification delivery failed; CI status is unchanged."
+            exit 1
+          fi
+
+          exit 1
+
+      - name: Summarize Slack notification outcome
+        if: ${{ always() }}
+        env:
+          WEBHOOK_CONFIGURED: ${{ env.SLACK_WEBHOOK_URL != '' }}
+          SEND_OUTCOME: ${{ steps.send.outcome || 'skipped' }}
+          NOTIFICATION_JOB_STATUS: ${{ job.status }}
+          PIPELINE_STATUS: ${{ steps.result.outputs.status || 'undetermined' }}
+        run: |
+          if [[ "$WEBHOOK_CONFIGURED" != "true" ]]; then
+            echo "Slack notification: skipped (SLACK_WEBHOOK_URL is not configured)." >> "$GITHUB_STEP_SUMMARY"
+            echo "Slack notification skipped because SLACK_WEBHOOK_URL is not configured."
+          elif [[ "$SEND_OUTCOME" == "success" ]]; then
+            echo "Slack notification: delivered. Pipeline status: **$PIPELINE_STATUS**." >> "$GITHUB_STEP_SUMMARY"
+            echo "Slack notification delivered for pipeline status: $PIPELINE_STATUS."
+          else
+            echo "Slack notification: **delivery failed** (step outcome: $SEND_OUTCOME). Pipeline status: **$PIPELINE_STATUS**. Notification job status: $NOTIFICATION_JOB_STATUS." >> "$GITHUB_STEP_SUMMARY"
+            echo "Slack notification did not complete successfully (step outcome: $SEND_OUTCOME; job status: $NOTIFICATION_JOB_STATUS). Pipeline status remains $PIPELINE_STATUS."
+          fi

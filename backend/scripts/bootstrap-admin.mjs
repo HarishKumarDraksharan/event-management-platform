@@ -1,4 +1,5 @@
 import { createJiti } from "jiti";
+import { fileURLToPath } from "node:url";
 
 function argument(name) {
   const index = process.argv.indexOf(`--${name}`);
@@ -47,11 +48,8 @@ function readHiddenPassword(prompt) {
 
 let prisma;
 try {
-  const jiti = createJiti(import.meta.url);
-  const [{ auth }, { prisma: database }] = await Promise.all([
-    jiti.import("../lib/auth.ts"),
-    jiti.import("../lib/prisma.ts"),
-  ]);
+  const jiti = createJiti(fileURLToPath(import.meta.url));
+  const { prisma: database } = await jiti.import("../lib/prisma.ts");
   prisma = database;
 
   const email = argument("email")?.trim().toLowerCase();
@@ -75,6 +73,7 @@ try {
     if (password !== confirmation) throw new Error("Passwords did not match. No account was created.");
 
     try {
+      const { auth } = await jiti.import("../lib/auth.ts");
       await auth.api.createUser({ body: { email, name, password, role: "admin" } });
     } catch {
       const concurrentlyCreated = await prisma.user.findUnique({ where: { email }, select: { role: true } });

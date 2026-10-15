@@ -3,17 +3,12 @@ import { PrismaClient } from "../generated/prisma/client";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { createHealthHandler } from "../lib/health";
 
-const testDatabaseUrl = process.env.TEST_DATABASE_URL;
+const testDatabaseUrl = process.env.TEST_DATABASE_URL!;
 
-if (process.env.CI === "true" && !testDatabaseUrl) {
-  throw new Error("TEST_DATABASE_URL must be configured in CI for the PostgreSQL integration test");
-}
-
-describe.skipIf(!testDatabaseUrl)("GET /api/health with PostgreSQL", () => {
+describe("GET /api/health with PostgreSQL", () => {
   let prisma: PrismaClient | undefined;
 
   beforeAll(() => {
-    if (!testDatabaseUrl) return;
     prisma = new PrismaClient({ adapter: new PrismaPg({ connectionString: testDatabaseUrl }) });
   });
 

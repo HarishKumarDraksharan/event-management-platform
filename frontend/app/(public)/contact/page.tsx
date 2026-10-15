@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { EnquiryForm } from "../../components/enquiry-form";
+import { EnquiryForm } from "../../../components/enquiry-form";
 
 export const metadata: Metadata = { title: "Contact", description: "Send TSG EVENTS an enquiry about a wedding, corporate event, birthday or private celebration." };
 

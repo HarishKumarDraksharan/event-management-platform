@@ -8,19 +8,16 @@ import { POST as authPost } from "../app/api/auth/[...all]/route";
 import { GET as adminEnquiries } from "../app/api/admin/enquiries/route";
 import { auth } from "../lib/auth";
 
-const testDatabaseUrl = process.env.TEST_DATABASE_URL;
+const testDatabaseUrl = process.env.TEST_DATABASE_URL!;
 const execFileAsync = promisify(execFile);
-if (process.env.CI === "true" && !testDatabaseUrl) {
-  throw new Error("TEST_DATABASE_URL must be configured for the authentication integration tests");
-}
 
-describe.skipIf(!testDatabaseUrl)("authentication and admin authorization with PostgreSQL", () => {
+describe("authentication and admin authorization with PostgreSQL", () => {
   const origin = process.env.BETTER_AUTH_URL ?? "http://localhost:8080";
   let prisma: PrismaClient | undefined;
   const createdEmails: string[] = [];
 
   beforeAll(() => {
-    if (testDatabaseUrl) prisma = new PrismaClient({ adapter: new PrismaPg({ connectionString: testDatabaseUrl }) });
+    prisma = new PrismaClient({ adapter: new PrismaPg({ connectionString: testDatabaseUrl }) });
   });
   afterAll(async () => {
     if (prisma && createdEmails.length) await prisma.user.deleteMany({ where: { email: { in: createdEmails } } });

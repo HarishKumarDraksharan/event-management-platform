@@ -1,17 +1,38 @@
-import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import Home from "../app/page";
-import AboutPage from "../app/about/page";
-import PortfolioPage from "../app/portfolio/page";
+import Home from "../app/(public)/page";
+import AboutPage from "../app/(public)/about/page";
+import PortfolioPage from "../app/(public)/portfolio/page";
 import { SiteHeader } from "../components/site-header";
+import { SiteFooter } from "../components/site-footer";
 import { EnquiryForm } from "../components/enquiry-form";
 import { siteMetadata } from "../lib/metadata";
 
 afterEach(() => { cleanup(); vi.unstubAllGlobals(); vi.restoreAllMocks(); });
 
+const services = [
+  { id: "1", slug: "weddings", title: "Weddings", kicker: "A DAY THAT FEELS LIKE YOU", description: "A thoughtful plan for the day, and all the moments around it.", detail: "Planning details for a wedding day and celebration." },
+  { id: "2", slug: "corporate-events", title: "Corporate events", kicker: "GATHER WITH PURPOSE", description: "Purposeful gatherings shaped around your people and plans.", detail: "A considered company gathering." },
+  { id: "3", slug: "birthdays", title: "Birthdays", kicker: "MAKE THEIR DAY THEIR OWN", description: "A personal celebration for the person at the centre of it.", detail: "A personal birthday plan." },
+  { id: "4", slug: "private-celebrations", title: "Private celebrations", kicker: "FOR THE MOMENTS THAT BRING YOU TOGETHER", description: "An intimate get-together, made to feel unmistakably yours.", detail: "A plan shaped around the occasion." },
+];
+const entries = [
+  { id: "a", title: "A gathering study", description: "Original sample illustration of a candlelit celebration table.", imageRef: "/images/gathering-study.svg", altText: "Sample illustration of a candlelit celebration table", isSample: true },
+  { id: "b", title: "Details in place", description: "Original sample illustration of an event table.", imageRef: "/images/table-study.svg", altText: "Sample illustration of an event table", isSample: true },
+  { id: "c", title: "A colour story", description: "Original abstract sample illustration.", imageRef: "/images/colour-study.svg", altText: "Sample abstract event illustration", isSample: true },
+];
+
+function stubCatalog() {
+  vi.stubGlobal("fetch", vi.fn(async (input: RequestInfo | URL) => {
+    const url = String(input);
+    return { ok: true, json: async () => url.endsWith("/api/services") ? { services } : { entries } };
+  }));
+}
+
 describe("TSG EVENTS public website", () => {
-  it("renders the homepage sections and links all four service pages", () => {
-    render(<Home />);
+  it("renders the homepage with active services and published portfolio links", async () => {
+    stubCatalog();
+    render(await Home());
     expect(screen.getByRole("heading", { name: /make room for meaningful moments/i })).toBeTruthy();
     expect(screen.getByRole("heading", { name: /every gathering starts somewhere/i })).toBeTruthy();
     expect(screen.getByRole("heading", { name: /stories worth gathering for/i })).toBeTruthy();
@@ -20,22 +41,27 @@ describe("TSG EVENTS public website", () => {
     expect(screen.getByRole("link", { name: /birthdays a personal celebration/i }).getAttribute("href")).toBe("/services/birthdays");
     expect(screen.getByRole("link", { name: /private celebrations an intimate get-together/i }).getAttribute("href")).toBe("/services/private-celebrations");
     expect(screen.getByRole("link", { name: /share your plans/i }).getAttribute("href")).toBe("/contact");
+    expect(screen.getByText(/A gathering study · SAMPLE/i)).toBeTruthy();
   });
 
-  it("offers labelled desktop and keyboard-operable mobile navigation", () => {
+  it("offers customer navigation and does not expose the admin sign-in publicly", () => {
     render(<SiteHeader />);
-    expect(screen.getByRole("navigation", { name: "Main navigation" })).toBeTruthy();
+    const nav = screen.getByRole("navigation", { name: "Main navigation" });
+    for (const label of ["Home", "Services", "Our work", "About", "Contact"]) expect(within(nav).getByRole("link", { name: label })).toBeTruthy();
+    expect(screen.queryByRole("link", { name: "Admin" })).toBeNull();
     fireEvent.click(screen.getByLabelText("Open navigation menu"));
     expect(screen.getByRole("navigation", { name: "Mobile navigation" })).toBeTruthy();
-    expect(screen.getByRole("link", { name: "TSG EVENTS home" }).getAttribute("href")).toBe("/");
-    expect(screen.getByLabelText("Open navigation menu")).toBeTruthy();
   });
 
-  it("labels portfolio content as sample artwork and includes the about section", () => {
-    const { unmount } = render(<PortfolioPage />);
+  it("keeps the public footer customer-focused and labels sample art", async () => {
+    render(<SiteFooter />);
+    expect(screen.queryByRole("link", { name: "Admin" })).toBeNull();
+    cleanup();
+    stubCatalog();
+    render(await PortfolioPage());
     expect(screen.getByRole("heading", { name: /stories worth gathering for/i })).toBeTruthy();
-    expect(screen.getAllByText("CONCEPT ART · PLACEHOLDER")).toHaveLength(3);
-    unmount();
+    expect(screen.getAllByText("CONCEPT ART · SAMPLE")).toHaveLength(3);
+    cleanup();
     render(<AboutPage />);
     expect(screen.getByRole("heading", { name: /good planning makes space for being there/i })).toBeTruthy();
     expect(screen.getByText(/company history, team details and location will be added when they are supplied/i)).toBeTruthy();

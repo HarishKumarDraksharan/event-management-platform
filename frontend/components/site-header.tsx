@@ -1,9 +1,11 @@
 import Link from "next/link";
 
 const links = [
+  { href: "/", label: "Home" },
   { href: "/#services", label: "Services" },
   { href: "/portfolio", label: "Our work" },
   { href: "/about", label: "About" },
+  { href: "/contact", label: "Contact" },
 ];
 
 export function SiteHeader() {
@@ -22,7 +24,6 @@ export function SiteHeader() {
           {links.map((link) => <Link key={link.href} href={link.href}>{link.label}</Link>)}
           <Link href="/services/birthdays">Birthdays</Link>
           <Link href="/services/private-celebrations">Private celebrations</Link>
-          <Link href="/contact">Contact</Link>
         </nav>
       </details>
     </header>
