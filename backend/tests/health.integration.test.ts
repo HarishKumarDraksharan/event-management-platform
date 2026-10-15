@@ -5,6 +5,10 @@ import { createHealthHandler } from "../lib/health";
 
 const testDatabaseUrl = process.env.TEST_DATABASE_URL;
 
+if (process.env.CI === "true" && !testDatabaseUrl) {
+  throw new Error("TEST_DATABASE_URL must be configured in CI for the PostgreSQL integration test");
+}
+
 describe.skipIf(!testDatabaseUrl)("GET /api/health with PostgreSQL", () => {
   let prisma: PrismaClient | undefined;
 

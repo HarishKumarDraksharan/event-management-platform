@@ -136,7 +136,22 @@ Start them again with the development command above. To stop the VM, run `exit` 
 
 ## Git workflow
 
-Use feature branches, open a pull request for review, wait for CI checks before merging, and merge validated work to `main`. GitHub Actions runs lint, type checks, tests, Prisma generation, and production builds on pushes to `main`, `development`, and `feature/**`, and on pull requests targeting `main` or `development`. A separate workflow validates Compose and builds both production images without publishing them.
+Use feature branches, open a pull request for review, wait for CI checks before merging, and merge validated work to `main`. The `CI/CD` workflow runs separate backend and frontend jobs on pushes to `main`, `development`, and `feature/**`, and on pull requests targeting `main` or `development`. The backend job uses a PostgreSQL service and requires the health integration test to connect; both app jobs install from their committed lockfiles. Only after both pass does CI call the reusable Docker workflow to validate Compose and build the production images tagged with the commit SHA. Images are not pushed and the workflow does not authenticate to AWS.
+
+### AWS deployment readiness
+
+The `Deploy to AWS` job in the reusable Docker workflow is a fail-closed scaffold, not an active deployment. It is skipped unless the repository variable `AWS_DEPLOYMENT_ENABLED` is explicitly set to `true` on a push to `main`; even then, it stops with an error until deployment steps are implemented. It has no AWS credentials or OIDC permissions, and image publishing remains disabled.
+
+Before enabling production deployment, configure and review all of the following:
+
+- A GitHub `production` environment restricted to `main`, with required reviewers and deployment protection rules.
+- AWS authentication through GitHub OIDC and a least-privilege IAM role. Limit permissions to the approved ECR repositories and ECS services; do not store long-lived AWS keys in GitHub secrets.
+- ECR repositories for the frontend and backend, with SHA-based image retention and scanning policies.
+- An ECS Fargate cluster, task definitions, and services behind the Application Load Balancer, including target-group health checks and appropriate deployment health thresholds.
+- A private RDS PostgreSQL instance, network rules, backups, and application database credentials stored in AWS Secrets Manager and injected into ECS tasks.
+- A tested rollback procedure, such as ECS deployment circuit-breaker rollback and redeployment of the previous known-good image tags, plus a way to verify application and database health after rollout.
+
+Only add ECR publishing and deployment steps after these resources, authentication permissions, environment approvals, health checks, and rollback behavior have been explicitly configured and approved.
 
 ## Phase status
 

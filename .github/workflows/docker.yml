@@ -1,17 +1,22 @@
-name: Docker validation
+name: Docker Build and AWS Deployment Scaffold
 
 on:
-  push:
-    branches: [main, development, "feature/**"]
-  pull_request:
-    branches: [main, development]
+  workflow_call:
+    inputs:
+      image_tag:
+        description: Git commit SHA used to tag both images
+        required: true
+        type: string
 
 permissions:
   contents: read
 
 jobs:
-  validate-and-build:
+  build-and-publish:
+    name: Build production Docker images (publishing disabled)
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
     env:
       POSTGRES_DB: event_management
       POSTGRES_USER: event_app
@@ -29,13 +34,16 @@ jobs:
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
 
+      # Images are built and SHA-tagged for validation. Push and AWS authentication
+      # stay disabled until ECR, OIDC, and production approval are configured.
       - name: Build frontend production image
         uses: docker/build-push-action@v6
         with:
           context: ./frontend
           target: runner
           push: false
-          tags: tsg-events-frontend:ci
+          tags: tsg-events/frontend:${{ inputs.image_tag }}
+          labels: org.opencontainers.image.revision=${{ inputs.image_tag }}
           cache-from: type=gha,scope=frontend
           cache-to: type=gha,mode=max,scope=frontend
 
@@ -45,6 +53,23 @@ jobs:
           context: ./backend
           target: runner
           push: false
-          tags: tsg-events-backend:ci
+          tags: tsg-events/backend:${{ inputs.image_tag }}
+          labels: org.opencontainers.image.revision=${{ inputs.image_tag }}
           cache-from: type=gha,scope=backend
           cache-to: type=gha,mode=max,scope=backend
+
+  deploy-aws:
+    name: Deploy to AWS (future scaffold, disabled by default)
+    needs: build-and-publish
+    if: ${{ vars.AWS_DEPLOYMENT_ENABLED == 'true' && github.event_name == 'push' && github.ref == 'refs/heads/main' }}
+    runs-on: ubuntu-latest
+    environment: production
+    permissions:
+      contents: read
+    steps:
+      # This guard intentionally fails closed. Add deployment steps only after the
+      # AWS prerequisites and GitHub production-environment approvals are ready.
+      - name: Keep production deployment blocked until it is implemented
+        run: |
+          echo "::error::AWS deployment is only a scaffold; no deployment has been configured."
+          exit 1

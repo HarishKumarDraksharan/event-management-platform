@@ -1,4 +1,4 @@
-name: CI
+name: CI/CD
 
 on:
   push:
@@ -9,12 +9,20 @@ on:
 permissions:
   contents: read
 
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
-  quality:
+  backend-tests:
+    name: Backend Tests
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
     env:
-      DATABASE_URL: postgresql://event_app:ci_password@localhost:5432/event_management
-      TEST_DATABASE_URL: postgresql://event_app:ci_password@localhost:5432/event_management_test
+      CI: "true"
+      DATABASE_URL: postgresql://event_app:ci_password@localhost:5432/event_management_test?schema=public
+      TEST_DATABASE_URL: postgresql://event_app:ci_password@localhost:5432/event_management_test?schema=public
       NEXT_TELEMETRY_DISABLED: "1"
     services:
       postgres:
@@ -34,44 +42,83 @@ jobs:
       - name: Check out repository
         uses: actions/checkout@v4
 
-      - name: Set up Node.js
+      - name: Set up Node.js 22
         uses: actions/setup-node@v4
         with:
-          node-version: 24
+          node-version: 22
           cache: npm
-          cache-dependency-path: |
-            frontend/package-lock.json
-            backend/package-lock.json
+          cache-dependency-path: backend/package-lock.json
 
-      - name: Install frontend dependencies
-        run: npm ci --prefix frontend
-
-      - name: Install backend dependencies
-        run: npm ci --prefix backend
+      - name: Install locked backend dependencies
+        working-directory: backend
+        run: npm ci
 
       - name: Generate Prisma Client
-        run: npm run db:generate --prefix backend
-
-      - name: Lint frontend
-        run: npm run lint --prefix frontend
-
-      - name: Type-check frontend
-        run: npm run typecheck --prefix frontend
-
-      - name: Test frontend
-        run: npm test --prefix frontend
-
-      - name: Build frontend
-        run: npm run build --prefix frontend
+        working-directory: backend
+        run: npm run db:generate
 
       - name: Lint backend
-        run: npm run lint --prefix backend
+        working-directory: backend
+        run: npm run lint
 
       - name: Type-check backend
-        run: npm run typecheck --prefix backend
+        working-directory: backend
+        run: npm run typecheck
 
-      - name: Test backend
-        run: npm test --prefix backend
+      - name: Require the PostgreSQL integration test configuration
+        run: node -e "if (!process.env.TEST_DATABASE_URL) { console.error('TEST_DATABASE_URL is required'); process.exit(1) }"
 
-      - name: Build backend
-        run: npm run build --prefix backend
+      - name: Run backend unit and PostgreSQL integration tests
+        working-directory: backend
+        run: npm test -- --reporter=verbose
+
+      - name: Build backend for production
+        working-directory: backend
+        run: npm run build
+
+  frontend-tests:
+    name: Frontend Tests & Build
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    env:
+      NEXT_TELEMETRY_DISABLED: "1"
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js 22
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Install locked frontend dependencies
+        working-directory: frontend
+        run: npm ci
+
+      - name: Lint frontend
+        working-directory: frontend
+        run: npm run lint
+
+      - name: Type-check frontend
+        working-directory: frontend
+        run: npm run typecheck
+
+      - name: Test frontend
+        working-directory: frontend
+        run: npm test
+
+      - name: Build frontend for production
+        working-directory: frontend
+        run: npm run build
+
+  build-images:
+    name: Build and Publish Docker Images
+    needs: [backend-tests, frontend-tests]
+    permissions:
+      contents: read
+    uses: ./.github/workflows/docker.yml
+    with:
+      image_tag: ${{ github.sha }}
