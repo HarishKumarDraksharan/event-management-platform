@@ -26,30 +26,75 @@ const heroSlides: PublicHeroSlide[] = [
   { id: "slide-1", heading: "Make room for meaningful moments.", description: "From the first idea to the final farewell, we bring the details together so you can be right where you belong.", buttonLabel: "Tell us what you are planning", destinationUrl: "/contact", imageRef: "/images/gathering-study.svg", sortOrder: 1 },
   { id: "slide-2", heading: "Every gathering starts somewhere.", description: "Thoughtful plans make space for the people and moments that matter to you.", buttonLabel: "Explore our services", destinationUrl: "/#services", imageRef: "/images/table-study.svg", sortOrder: 2 },
 ];
-const introduction = { eyebrow: "TEST INTRODUCTION", heading: "A saved heading", highlight: "with a highlight.", description: "A saved description from the homepage introduction API." };
+const aboutUs = {
+  eyebrow: "Our story",
+  heading: "Best Event Management Company In Chennai, Tamil Nadu",
+  firstParagraph: "We plan corporate events, weddings, receptions, birthdays and baby showers in Chennai.",
+  secondParagraph: "Our team handles stage setup, lighting, catering and event logistics.",
+  imageUrl: "/images/gathering-study.svg",
+  imageCaption: "The Powerhouse of Events Management",
+  buttonLabel: "More About Us",
+  destinationUrl: "/about",
+  isVisible: true,
+};
 
 function stubCatalog() {
   vi.stubGlobal("fetch", vi.fn(async (input: RequestInfo | URL) => {
     const url = String(input);
-    return { ok: true, json: async () => url.endsWith("/api/services") ? { services } : url.endsWith("/api/hero-slides") ? { slides: heroSlides } : url.endsWith("/api/homepage-introduction") ? { introduction } : { entries } };
+    return { ok: true, json: async () => url.endsWith("/api/hero-slides") ? { slides: heroSlides } : url.endsWith("/api/about-us") ? { aboutUs } : { entries } };
   }));
 }
 
 describe("TSG EVENTS public website", () => {
-  it("renders the homepage with active services and published portfolio links", async () => {
+  it("renders only the hero carousel and the new About Us section on the homepage", async () => {
     stubCatalog();
     render(await Home());
     expect(screen.getByRole("heading", { name: /make room for meaningful moments/i })).toBeTruthy();
-    expect(screen.getByRole("heading", { name: /a saved heading with a highlight/i })).toBeTruthy();
-    expect(screen.getByText("A saved description from the homepage introduction API.")).toBeTruthy();
-    expect(screen.getByRole("heading", { name: /every gathering starts somewhere/i })).toBeTruthy();
-    expect(screen.getByRole("heading", { name: /stories worth gathering for/i })).toBeTruthy();
-    expect(screen.getByRole("link", { name: /weddings a thoughtful plan/i }).getAttribute("href")).toBe("/services/weddings");
-    expect(screen.getByRole("link", { name: /corporate events purposeful gatherings/i }).getAttribute("href")).toBe("/services/corporate-events");
-    expect(screen.getByRole("link", { name: /birthdays a personal celebration/i }).getAttribute("href")).toBe("/services/birthdays");
-    expect(screen.getByRole("link", { name: /private celebrations an intimate get-together/i }).getAttribute("href")).toBe("/services/private-celebrations");
-    expect(screen.getByRole("link", { name: /share your plans/i }).getAttribute("href")).toBe("/contact");
-    expect(screen.getByText(/A gathering study · SAMPLE/i)).toBeTruthy();
+    const hero = screen.getByRole("region", { name: "TSG EVENTS featured moments" });
+    expect(within(hero).getByRole("button", { name: "Next slide" })).toBeTruthy();
+    expect(screen.getByRole("heading", { name: aboutUs.heading })).toBeTruthy();
+    expect(screen.getByText(aboutUs.eyebrow)).toBeTruthy();
+    expect(screen.getByText(aboutUs.firstParagraph)).toBeTruthy();
+    expect(screen.getByText(aboutUs.secondParagraph)).toBeTruthy();
+    expect(screen.getByRole("link", { name: "More About Us" }).getAttribute("href")).toBe("/about");
+    expect(screen.getByRole("img", { name: aboutUs.imageCaption }).getAttribute("src")).toContain("/images/gathering-study.svg");
+    expect(screen.getByText(aboutUs.imageCaption)).toBeTruthy();
+    const aboutSection = document.querySelector<HTMLElement>("#about")!;
+    expect(aboutSection.querySelector(".home-about-copy")).toBeTruthy();
+    expect(aboutSection.querySelector(".home-about-image")).toBeTruthy();
+    expect(aboutSection.querySelector(".home-about-image-frame")).toBeTruthy();
+    expect(aboutSection.querySelector(".home-about-image-shade")).toBeTruthy();
+
+    const main = screen.getByRole("main", { name: "" });
+    expect([...main.children].map((child) => child.id)).toEqual(["home", "about"]);
+    expect(document.querySelector("#services, #work, #introduction, .contact-band")).toBeNull();
+    expect(screen.queryByRole("heading", { name: /stories worth gathering for|every gathering starts somewhere/i })).toBeNull();
+  });
+
+  it("uses saved About Us content and hides the section when it is not visible", async () => {
+    vi.stubGlobal("fetch", vi.fn(async (input: RequestInfo | URL) => {
+      const url = String(input);
+      return {
+        ok: true,
+        json: async () => url.endsWith("/api/hero-slides")
+          ? { slides: heroSlides }
+          : { aboutUs: { ...aboutUs, eyebrow: "Saved eyebrow", heading: "Saved About Us heading", imageUrl: "/images/table-study.svg", imageCaption: "Saved image caption", buttonLabel: "Discover our story", destinationUrl: "/about", isVisible: true } },
+      };
+    }));
+    const { unmount } = render(await Home());
+    expect(screen.getByText("Saved eyebrow")).toBeTruthy();
+    expect(screen.getByRole("heading", { name: "Saved About Us heading" })).toBeTruthy();
+    expect(screen.getByRole("img", { name: "Saved image caption" }).getAttribute("src")).toContain("/images/table-study.svg");
+    expect(screen.getByRole("link", { name: "Discover our story" }).getAttribute("href")).toBe("/about");
+    unmount();
+
+    vi.stubGlobal("fetch", vi.fn(async (input: RequestInfo | URL) => ({
+      ok: true,
+      json: async () => String(input).endsWith("/api/hero-slides") ? { slides: heroSlides } : { aboutUs: { ...aboutUs, isVisible: false } },
+    })));
+    render(await Home());
+    expect(document.querySelector("#about")).toBeNull();
+    expect(screen.getByRole("region", { name: "TSG EVENTS featured moments" })).toBeTruthy();
   });
 
   it("offers customer navigation and does not expose the admin sign-in publicly", () => {

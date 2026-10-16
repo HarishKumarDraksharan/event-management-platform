@@ -36,3 +36,19 @@
 .mobile-nav nav .service-dropdown-list{position:static;min-width:0;margin:0;padding:2px 0 6px;background:transparent;border:0;box-shadow:none}
 .mobile-nav nav .service-dropdown-panel{padding:2px 8px 6px;border:0;border-left:1px solid var(--line);box-shadow:none;background:transparent}
 .mobile-nav nav .service-dropdown-panel a,.mobile-nav nav .service-dropdown-panel>span{padding:10px;border:0}
+
+.home-about{width:100%;max-width:1560px;margin:0 auto;padding:clamp(76px,7vw,100px) clamp(32px,6vw,96px);box-sizing:border-box;display:grid;grid-template-columns:minmax(0,.94fr) minmax(0,1.06fr);align-items:center;gap:clamp(40px,5vw,76px);background:var(--paper)}
+.home-about-copy{width:100%;min-width:0}
+.home-about-copy .eyebrow{margin-bottom:18px;color:var(--orange);font-size:13px;letter-spacing:.12em;text-transform:uppercase}
+.home-about-copy h2{width:100%;margin:0 0 26px;color:#292d2b;font-size:clamp(39px,4.2vw,58px);line-height:1.12;letter-spacing:-.035em}
+.home-about-copy>p:not(.eyebrow){margin:0 0 18px;color:#555c57;font:17px/1.8 var(--serif)}
+.home-about-link{min-height:52px;margin-top:13px;padding:0 22px;display:inline-flex;align-items:center;gap:20px;background:var(--orange);color:#fff;font-size:16px;font-weight:700;transition:background-color .2s ease}
+.home-about-link:hover{background:#a9603f}
+.home-about-link span{font-size:19px}
+.home-about-image{width:100%;min-width:0;min-height:0;aspect-ratio:4/3;position:relative;isolation:isolate;margin:0;background:#d9b9a5}
+.home-about-image-frame{position:absolute;z-index:-1;inset:16px -16px -16px 16px;border:1px solid var(--orange)}
+.home-about-image>img{z-index:0;object-fit:cover}
+.home-about-image-shade{position:absolute;z-index:1;inset:35% 0 0;background:linear-gradient(180deg,transparent 0%,#151b18b8 100%)}
+.home-about-image figcaption{position:absolute;z-index:2;right:26px;bottom:26px;left:26px;color:#fff;font-size:clamp(21px,2.25vw,30px);font-weight:700;line-height:1.25}
+@media(max-width:900px){.home-about{gap:34px;padding-right:5%;padding-left:5%}.home-about-copy h2{font-size:clamp(36px,4.5vw,48px)}.home-about-copy>p:not(.eyebrow){font-size:16px}}
+@media(max-width:767px){.home-about{grid-template-columns:minmax(0,1fr);gap:38px;padding:68px 7% 78px}.home-about-copy h2{font-size:clamp(37px,9vw,48px)}.home-about-image{aspect-ratio:1.3}.home-about-image-frame{inset:12px -10px -10px 10px}.home-about-image figcaption{right:18px;bottom:18px;left:18px;font-size:clamp(19px,5.5vw,25px)}}

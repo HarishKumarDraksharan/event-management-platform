@@ -70,6 +70,20 @@ model HomepageIntroduction {
   updatedAt   DateTime @default(now()) @updatedAt @db.Timestamptz(6)
 }
 
+model AboutUsSection {
+  id             String   @id @default("home") @db.VarChar(20)
+  eyebrow        String   @db.VarChar(120)
+  heading        String   @db.VarChar(200)
+  firstParagraph String   @db.VarChar(2000)
+  secondParagraph String  @db.VarChar(2000)
+  imageUrl       String   @db.VarChar(1000)
+  imageCaption   String   @db.VarChar(200)
+  buttonLabel    String   @db.VarChar(80)
+  destinationUrl String   @db.VarChar(300)
+  isVisible      Boolean  @default(true)
+  updatedAt      DateTime @default(now()) @updatedAt @db.Timestamptz(6)
+}
+
 model User {
   id            String    @id
   name          String

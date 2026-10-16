@@ -55,13 +55,40 @@ describe("admin content overview", () => {
     render(<AdminHomepagePage />);
     const section = screen.getByRole("region", { name: "Homepage Sections" });
     expect(within(section).getByRole("link", { name: /hero carousel/i }).getAttribute("href")).toBe("/admin/hero-slides");
-    expect(within(section).getByRole("link", { name: /introduction/i }).getAttribute("href")).toBe("/admin/homepage-introduction");
+    expect(within(section).getByRole("link", { name: /about us/i }).getAttribute("href")).toBe("/admin/about-us");
     expect(section.querySelectorAll("a")).toHaveLength(2);
   });
 
-  it("clearly marks About Us copy static and links to its public page", () => {
+  it("provides a persistent About Us editor and links to the public page", async () => {
+    const initial = {
+      eyebrow: "Our story",
+      heading: "A heading for the About Us section",
+      firstParagraph: "The first paragraph contains enough text to pass the validation rules.",
+      secondParagraph: "The second paragraph contains enough text to pass the validation rules.",
+      imageUrl: "/images/gathering-study.svg",
+      imageCaption: "A celebration image",
+      buttonLabel: "More About Us",
+      destinationUrl: "/about",
+      isVisible: true,
+    };
+    let saved = initial;
+    const fetchMock = vi.fn(async (_input: RequestInfo | URL, init?: RequestInit) => {
+      if (!init?.method) return { ok: true, json: async () => ({ aboutUs: saved }) };
+      saved = JSON.parse(String(init.body));
+      return { ok: true, json: async () => ({ aboutUs: saved }) };
+    });
+    vi.stubGlobal("fetch", fetchMock);
     render(<AdminAboutUsPage />);
-    expect(screen.getByRole("heading", { name: /public content is currently static/i })).toBeTruthy();
+    await waitFor(() => expect(screen.getByRole("heading", { name: "Edit homepage About Us section" })).toBeTruthy());
+
+    fireEvent.change(screen.getByLabelText("Main heading"), { target: { value: "Saved About Us heading" } });
+    fireEvent.change(screen.getByLabelText("Event image URL"), { target: { value: "/images/table-study.svg" } });
+    fireEvent.click(screen.getByRole("checkbox", { name: "Show About Us section on the homepage" }));
+    fireEvent.submit(screen.getByRole("button", { name: "Save About Us section" }).closest("form")!);
+
+    await waitFor(() => expect(screen.getByRole("status").textContent).toBe("About Us section saved."));
+    expect(fetchMock).toHaveBeenCalledWith("/api/admin/about-us", expect.objectContaining({ method: "PUT", credentials: "same-origin" }));
+    expect(saved).toMatchObject({ heading: "Saved About Us heading", imageUrl: "/images/table-study.svg", isVisible: false });
     expect(screen.getByRole("link", { name: /view the public about us page/i }).getAttribute("href")).toBe("/about");
   });
 });

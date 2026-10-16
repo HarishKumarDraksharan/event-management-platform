@@ -5,7 +5,7 @@ export const metadata: Metadata = { title: "Homepage management", description: "
 
 const sections = [
   { number: "SECTION 1", title: "Hero Carousel", href: "/admin/hero-slides", description: "Edit slides, display order, and publication status." },
-  { number: "SECTION 2", title: "Introduction", href: "/admin/homepage-introduction", description: "Edit the eyebrow, heading, and introduction copy." },
+  { number: "SECTION 2", title: "About Us", href: "/admin/about-us", description: "Edit the story, event image, button, and section visibility." },
 ];
 
 export default function AdminHomepagePage() {

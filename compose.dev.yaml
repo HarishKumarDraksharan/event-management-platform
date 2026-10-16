@@ -13,7 +13,7 @@ services:
   backend:
     build:
       target: development
-    command: npm run dev -- --hostname 0.0.0.0
+    command: sh -c "npx prisma generate && npm run dev -- --hostname 0.0.0.0"
     environment:
       NODE_ENV: development
       TEST_DATABASE_URL: postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/event_management_test?schema=public
