@@ -46,6 +46,30 @@ model PortfolioEntry {
   updatedAt   DateTime @default(now()) @updatedAt @db.Timestamptz(6)
 }
 
+model HeroSlide {
+  id             String   @id @default(uuid()) @db.Uuid
+  heading        String   @db.VarChar(120)
+  description    String   @db.VarChar(500)
+  buttonLabel    String   @db.VarChar(80)
+  destinationUrl String   @db.VarChar(300)
+  imageRef       String   @db.VarChar(200)
+  isPublished    Boolean  @default(false)
+  sortOrder      Int      @default(0)
+  createdAt      DateTime @default(now()) @db.Timestamptz(6)
+  updatedAt      DateTime @default(now()) @updatedAt @db.Timestamptz(6)
+
+  @@index([isPublished, sortOrder])
+}
+
+model HomepageIntroduction {
+  id          String   @id @default("home") @db.VarChar(20)
+  eyebrow     String   @db.VarChar(120)
+  heading     String   @db.VarChar(200)
+  highlight   String   @db.VarChar(120)
+  description String   @db.VarChar(1000)
+  updatedAt   DateTime @default(now()) @updatedAt @db.Timestamptz(6)
+}
+
 model User {
   id            String    @id
   name          String

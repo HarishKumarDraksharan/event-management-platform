@@ -5,6 +5,7 @@ import AboutPage from "../app/(public)/about/page";
 import PortfolioPage from "../app/(public)/portfolio/page";
 import { SiteHeader } from "../components/site-header";
 import { SiteFooter } from "../components/site-footer";
+import type { PublicHeroSlide } from "../lib/public-content";
 import { EnquiryForm } from "../components/enquiry-form";
 import { siteMetadata } from "../lib/metadata";
 
@@ -21,11 +22,16 @@ const entries = [
   { id: "b", title: "Details in place", description: "Original sample illustration of an event table.", imageRef: "/images/table-study.svg", altText: "Sample illustration of an event table", isSample: true },
   { id: "c", title: "A colour story", description: "Original abstract sample illustration.", imageRef: "/images/colour-study.svg", altText: "Sample abstract event illustration", isSample: true },
 ];
+const heroSlides: PublicHeroSlide[] = [
+  { id: "slide-1", heading: "Make room for meaningful moments.", description: "From the first idea to the final farewell, we bring the details together so you can be right where you belong.", buttonLabel: "Tell us what you are planning", destinationUrl: "/contact", imageRef: "/images/gathering-study.svg", sortOrder: 1 },
+  { id: "slide-2", heading: "Every gathering starts somewhere.", description: "Thoughtful plans make space for the people and moments that matter to you.", buttonLabel: "Explore our services", destinationUrl: "/#services", imageRef: "/images/table-study.svg", sortOrder: 2 },
+];
+const introduction = { eyebrow: "TEST INTRODUCTION", heading: "A saved heading", highlight: "with a highlight.", description: "A saved description from the homepage introduction API." };
 
 function stubCatalog() {
   vi.stubGlobal("fetch", vi.fn(async (input: RequestInfo | URL) => {
     const url = String(input);
-    return { ok: true, json: async () => url.endsWith("/api/services") ? { services } : { entries } };
+    return { ok: true, json: async () => url.endsWith("/api/services") ? { services } : url.endsWith("/api/hero-slides") ? { slides: heroSlides } : url.endsWith("/api/homepage-introduction") ? { introduction } : { entries } };
   }));
 }
 
@@ -34,6 +40,8 @@ describe("TSG EVENTS public website", () => {
     stubCatalog();
     render(await Home());
     expect(screen.getByRole("heading", { name: /make room for meaningful moments/i })).toBeTruthy();
+    expect(screen.getByRole("heading", { name: /a saved heading with a highlight/i })).toBeTruthy();
+    expect(screen.getByText("A saved description from the homepage introduction API.")).toBeTruthy();
     expect(screen.getByRole("heading", { name: /every gathering starts somewhere/i })).toBeTruthy();
     expect(screen.getByRole("heading", { name: /stories worth gathering for/i })).toBeTruthy();
     expect(screen.getByRole("link", { name: /weddings a thoughtful plan/i }).getAttribute("href")).toBe("/services/weddings");
@@ -45,12 +53,67 @@ describe("TSG EVENTS public website", () => {
   });
 
   it("offers customer navigation and does not expose the admin sign-in publicly", () => {
-    render(<SiteHeader />);
+    render(<SiteHeader services={services} />);
     const nav = screen.getByRole("navigation", { name: "Main navigation" });
-    for (const label of ["Home", "Services", "Our work", "About", "Contact"]) expect(within(nav).getByRole("link", { name: label })).toBeTruthy();
+    expect([...nav.querySelectorAll(":scope > a, :scope > details > summary")].map((item) => item.getAttribute("aria-label") ?? item.textContent?.trim().replace(/\s+/g, " "))).toEqual(["Home", "About Us", "Services", "Gallery", "Contact", "Let's Talk"]);
+    expect([...nav.querySelectorAll(":scope > a")].map((link) => [link.textContent?.trim(), link.getAttribute("href")])).toEqual([["Home", "/"], ["About Us", "/about"], ["Gallery", "/portfolio"], ["Contact", "/contact"], ["Let's Talk", "/contact"]]);
+    for (const label of ["Home", "About Us", "Gallery", "Contact", "Let's Talk"]) expect(within(nav).getByRole("link", { name: label })).toBeTruthy();
+    const dropdown = document.querySelector(".desktop-service-dropdown") as HTMLDetailsElement;
+    const trigger = dropdown.querySelector("summary") as HTMLElement;
+    fireEvent.pointerEnter(dropdown, { pointerType: "mouse" });
+    expect(trigger.getAttribute("aria-expanded")).toBe("true");
+    const serviceList = dropdown.querySelector(".service-dropdown-list")!;
+    fireEvent.pointerLeave(trigger, { pointerType: "mouse", relatedTarget: serviceList });
+    fireEvent.pointerEnter(serviceList, { pointerType: "mouse" });
+    expect((dropdown as HTMLDetailsElement).open).toBe(true);
+    expect(within(dropdown).getByRole("link", { name: "All services" }).getAttribute("href")).toBe("/#services");
+    expect(within(nav).getByRole("link", { name: "Weddings" }).getAttribute("href")).toBe("/services/weddings");
+    const selectService = vi.fn((event: Event) => event.preventDefault());
+    const weddingLink = within(nav).getByRole("link", { name: "Weddings" });
+    weddingLink.addEventListener("click", selectService);
+    fireEvent.click(weddingLink);
+    expect(selectService).toHaveBeenCalledOnce();
+    fireEvent.keyDown(dropdown, { key: "Escape" });
+    expect((dropdown as HTMLDetailsElement).open).toBe(false);
     expect(screen.queryByRole("link", { name: "Admin" })).toBeNull();
     fireEvent.click(screen.getByLabelText("Open navigation menu"));
-    expect(screen.getByRole("navigation", { name: "Mobile navigation" })).toBeTruthy();
+    const mobile = screen.getByRole("navigation", { name: "Mobile navigation" });
+    expect(mobile).toBeTruthy();
+    expect([...mobile.querySelectorAll(":scope > a, :scope > details > summary")].map((item) => item.getAttribute("aria-label") ?? item.textContent?.trim().replace(/\s+/g, " "))).toEqual(["Home", "About Us", "Services", "Gallery", "Contact", "Let's Talk"]);
+    expect([...mobile.querySelectorAll(":scope > a")].map((link) => [link.textContent?.trim(), link.getAttribute("href")])).toEqual([["Home", "/"], ["About Us", "/about"], ["Gallery", "/portfolio"], ["Contact", "/contact"], ["Let's Talk", "/contact"]]);
+    const mobileServices = mobile.querySelector(".mobile-service-dropdown") as HTMLElement;
+    const mobileTrigger = mobileServices.querySelector("summary") as HTMLElement;
+    fireEvent.click(mobileTrigger);
+    expect(mobileTrigger.getAttribute("aria-expanded")).toBe("true");
+    const corporateLink = within(mobileServices).getByRole("link", { name: "Corporate events" });
+    expect(corporateLink.getAttribute("href")).toBe("/services/corporate-events");
+    const selectMobileService = vi.fn((event: Event) => event.preventDefault());
+    corporateLink.addEventListener("click", selectMobileService);
+    fireEvent.click(corporateLink);
+    expect(selectMobileService).toHaveBeenCalledOnce();
+    expect((mobile.closest("details") as HTMLDetailsElement).open).toBe(false);
+  });
+
+  it("opens and moves focus through services with the keyboard, then closes on Escape", async () => {
+    render(<SiteHeader services={services} />);
+    const dropdown = document.querySelector(".desktop-service-dropdown") as HTMLDetailsElement;
+    const trigger = dropdown.querySelector("summary") as HTMLElement;
+    fireEvent.keyDown(trigger, { key: "ArrowDown" });
+    const allServices = within(dropdown).getByRole("link", { name: "All services" });
+    await waitFor(() => expect(document.activeElement).toBe(allServices));
+    const weddings = within(dropdown).getByRole("link", { name: "Weddings" });
+    fireEvent.keyDown(allServices, { key: "ArrowDown" });
+    expect(document.activeElement).toBe(weddings);
+    fireEvent.keyDown(weddings, { key: "Escape" });
+    expect(dropdown.open).toBe(false);
+    expect(document.activeElement).toBe(trigger);
+    expect(trigger.getAttribute("aria-expanded")).toBe("false");
+  });
+
+  it("compacts the public header after the page scrolls", () => {
+    vi.stubGlobal("scrollY", 80);
+    render(<SiteHeader services={services} />);
+    expect(document.querySelector(".site-header")?.classList.contains("is-compact")).toBe(true);
   });
 
   it("keeps the public footer customer-focused and labels sample art", async () => {
