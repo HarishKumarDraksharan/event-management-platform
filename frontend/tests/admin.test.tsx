@@ -8,9 +8,11 @@ import { AdminPortfolioManager } from "../components/admin-portfolio-manager";
 import { AdminHeroSlideManager } from "../components/admin-hero-slide-manager";
 import { AdminHomepageIntroductionManager } from "../components/admin-homepage-introduction-manager";
 import { AdminHomepageServicesManager } from "../components/admin-homepage-services-manager";
+import { AdminHomepageWhyChooseUsManager } from "../components/admin-homepage-why-choose-us-manager";
 import AdminDashboard from "../app/(panel)/admin/page";
 import AdminHomepagePage from "../app/(panel)/admin/homepage/page";
 import AdminAboutUsPage from "../app/(panel)/admin/about-us/page";
+import AdminHomepageWhyChooseUsPage from "../app/(panel)/admin/homepage-why-choose-us/page";
 
 const { router } = vi.hoisted(() => ({ router: { replace: vi.fn(), refresh: vi.fn() } }));
 vi.mock("next/navigation", () => ({ useRouter: () => router }));
@@ -58,7 +60,108 @@ describe("admin content overview", () => {
     expect(within(section).getByRole("link", { name: /hero carousel/i }).getAttribute("href")).toBe("/admin/hero-slides");
     expect(within(section).getByRole("link", { name: /about us/i }).getAttribute("href")).toBe("/admin/about-us");
     expect(within(section).getByRole("link", { name: /services/i }).getAttribute("href")).toBe("/admin/homepage-services");
-    expect(section.querySelectorAll("a")).toHaveLength(3);
+    expect(within(section).getByRole("link", { name: /why choose us/i }).getAttribute("href")).toBe("/admin/homepage-why-choose-us");
+    expect(section.querySelectorAll("a")).toHaveLength(4);
+  });
+
+  it("edits, adds, removes, reorders, and saves Why Choose Us features", async () => {
+    const initial = {
+      heading: "Why Choose Chennai Events Management Company?",
+      supportingText: "A supporting story for every celebration.",
+      isVisible: true,
+      featureCards: [
+        { id: "friendly-team", title: "Friendly Team", description: "We make every client feel welcome.", icon: "users" },
+        { id: "perfect-venues", title: "Perfect Venues", description: "The right setting for every occasion.", icon: "mapPin" },
+      ],
+    };
+    const fetchMock = vi.fn(async (_input: RequestInfo | URL, init?: RequestInit) => {
+      if (!init?.method) return { ok: true, json: async () => ({ section: initial }) };
+      const body = JSON.parse(String(init.body));
+      return { ok: true, json: async () => ({ section: body }) };
+    });
+    vi.stubGlobal("fetch", fetchMock);
+    const { container } = render(<AdminHomepageWhyChooseUsPage />);
+    await waitFor(() => expect(screen.getByRole("heading", { name: "Edit homepage Why Choose Us section" })).toBeTruthy());
+    expect(screen.getAllByRole("button", { name: /FEATURE \d+/ }).every((button) => button.getAttribute("aria-expanded") === "false")).toBe(true);
+    expect([...container.querySelectorAll(".admin-home-why-card-editor")].every((editor) => editor.hasAttribute("hidden"))).toBe(true);
+    fireEvent.change(screen.getByLabelText("Section heading"), { target: { value: "Why TSG Events" } });
+    fireEvent.click(screen.getByRole("button", { name: "Add feature" }));
+    const newEditor = container.querySelector<HTMLElement>(".admin-home-why-card-editor:not([hidden])")!;
+    fireEvent.change(within(newEditor).getByLabelText("Title"), { target: { value: "Creative ideas" } });
+    fireEvent.change(within(newEditor).getByLabelText("Description"), { target: { value: "Fresh concepts for every event." } });
+    fireEvent.change(within(newEditor).getByLabelText("Icon"), { target: { value: "lightbulb" } });
+    fireEvent.click(screen.getByRole("button", { name: "Move Creative ideas up" }));
+    fireEvent.click(screen.getByRole("button", { name: "Remove Perfect Venues" }));
+    fireEvent.submit(screen.getByRole("button", { name: "Save Why Choose Us section" }).closest("form")!);
+    await waitFor(() => expect(screen.getByRole("status").textContent).toBe("Why Choose Us section saved."));
+    const saved = JSON.parse(String(fetchMock.mock.calls.at(-1)?.[1]?.body)) as typeof initial;
+    expect(saved.heading).toBe("Why TSG Events");
+    expect(saved.featureCards.map((feature) => feature.title)).toEqual(["Friendly Team", "Creative ideas"]);
+    expect(saved.featureCards[1].icon).toBe("lightbulb");
+    expect(fetchMock).toHaveBeenCalledWith("/api/admin/homepage-why-choose-us", expect.objectContaining({
+      method: "PUT",
+      credentials: "same-origin",
+    }));
+  });
+
+  it("expands a collapsed feature, edits its fields, and collapses it again accessibly", async () => {
+    const initial = {
+      heading: "Why Choose Chennai Events Management Company?",
+      supportingText: "Thoughtful event planning starts with a great team.",
+      isVisible: true,
+      featureCards: [
+        { id: "friendly-team", title: "Friendly Team", description: "We make every client feel welcome.", icon: "users" },
+        { id: "perfect-venues", title: "Perfect Venues", description: "The right setting for every occasion.", icon: "mapPin" },
+      ],
+    };
+    const fetchMock = vi.fn(async (_input: RequestInfo | URL, init?: RequestInit) => ({
+      ok: true,
+      json: async () => ({ section: init?.method ? JSON.parse(String(init.body)) : initial }),
+    }));
+    vi.stubGlobal("fetch", fetchMock);
+    const { container } = render(<AdminHomepageWhyChooseUsManager />);
+    const header = await screen.findByRole("button", { name: /FEATURE 01 Friendly Team/ });
+    expect(header.getAttribute("aria-expanded")).toBe("false");
+    expect([...container.querySelectorAll(".admin-home-why-card-editor")].every((editor) => editor.hasAttribute("hidden"))).toBe(true);
+    expect(screen.getByRole("button", { name: "Move Friendly Team up" }).hasAttribute("disabled")).toBe(true);
+    expect(screen.getByRole("button", { name: "Move Friendly Team down" }).hasAttribute("disabled")).toBe(false);
+
+    fireEvent.click(header);
+    expect(header.getAttribute("aria-expanded")).toBe("true");
+    expect(header.getAttribute("aria-controls")).toBeTruthy();
+    const editor = container.querySelector<HTMLElement>(`#${header.getAttribute("aria-controls")}`)!;
+    fireEvent.change(within(editor).getByLabelText("Title"), { target: { value: "A welcoming team" } });
+    fireEvent.change(within(editor).getByLabelText("Description"), { target: { value: "Warm, helpful people from first call to last guest." } });
+    fireEvent.change(within(editor).getByLabelText("Icon"), { target: { value: "heart" } });
+    expect(header.textContent).toContain("A welcoming team");
+    expect(header.textContent).toContain("Warm, helpful people");
+    fireEvent.click(header);
+    expect(header.getAttribute("aria-expanded")).toBe("false");
+    expect(editor.hasAttribute("hidden")).toBe(true);
+  });
+
+  it("shows an accessible load error in the Why Choose Us editor", async () => {
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValue({ ok: false, json: async () => ({ error: "Homepage content is unavailable." }) }));
+    render(<AdminHomepageWhyChooseUsManager />);
+    expect(await screen.findByRole("alert")).toBeTruthy();
+    expect(screen.getByText("Homepage content is unavailable.")).toBeTruthy();
+  });
+
+  it("shows a clear save error and returns to an enabled save action", async () => {
+    vi.stubGlobal("fetch", vi.fn(async (_input: RequestInfo | URL, init?: RequestInit) => init?.method
+      ? { ok: false, json: async () => ({ error: "Homepage content could not be saved right now." }) }
+      : { ok: true, json: async () => ({ section: {
+        heading: "Why Choose TSG Events?",
+        supportingText: "Carefully planned events, from first idea to final guest.",
+        isVisible: true,
+        featureCards: [{ id: "friendly-team", title: "Friendly Team", description: "We make every client feel welcome.", icon: "users" }],
+      } }) }));
+    render(<AdminHomepageWhyChooseUsManager />);
+    const save = await screen.findByRole("button", { name: "Save Why Choose Us section" });
+    fireEvent.submit(save.closest("form")!);
+    expect(await screen.findByRole("alert")).toBeTruthy();
+    expect(screen.getByText("Homepage content could not be saved right now.")).toBeTruthy();
+    expect(save.hasAttribute("disabled")).toBe(false);
   });
 
   it("selects and reorders services and persists homepage section settings", async () => {

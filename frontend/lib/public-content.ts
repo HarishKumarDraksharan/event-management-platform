@@ -54,6 +54,20 @@ export type PublicHomepageServices = {
   serviceIds: string[] | null;
 };
 
+export type PublicHomepageFeature = {
+  id: string;
+  title: string;
+  description: string;
+  icon: string;
+};
+
+export type PublicHomepageWhyChooseUs = {
+  heading: string;
+  supportingText: string;
+  isVisible: boolean;
+  featureCards: PublicHomepageFeature[];
+};
+
 export const defaultHomepageIntroduction: PublicHomepageIntroduction = {
   eyebrow: "TSG EVENTS · EVENT PLANNING",
   heading: "Big days, little details,",
@@ -61,7 +75,7 @@ export const defaultHomepageIntroduction: PublicHomepageIntroduction = {
   description: "Every gathering has its own rhythm. We help bring the people, place and many moving pieces together, so the experience feels considered from the first welcome to the last goodbye.",
 };
 
-async function publicApi<T>(path: string, key: "services" | "entries" | "slides" | "introduction" | "aboutUs" | "section"): Promise<T[] | T | null> {
+async function publicApi<T>(path: string, key: "services" | "entries" | "slides" | "introduction" | "aboutUs" | "section" | "whyChooseUs"): Promise<T[] | T | null> {
   try {
     const baseUrl = process.env.BACKEND_INTERNAL_URL ?? "http://backend:3001";
     const response = await fetch(`${baseUrl}/api/${path}`, { cache: "no-store" });
@@ -82,3 +96,4 @@ export const getPublicHeroSlides = () => publicApi<PublicHeroSlide>("hero-slides
 export const getPublicHomepageIntroduction = () => publicApi<PublicHomepageIntroduction>("homepage-introduction", "introduction") as Promise<PublicHomepageIntroduction | null>;
 export const getPublicAboutUs = () => publicApi<PublicAboutUs>("about-us", "aboutUs") as Promise<PublicAboutUs | null>;
 export const getPublicHomepageServices = () => publicApi<PublicHomepageServices>("homepage-services", "section") as Promise<PublicHomepageServices | null>;
+export const getPublicHomepageWhyChooseUs = () => publicApi<PublicHomepageWhyChooseUs>("homepage-why-choose-us", "section") as Promise<PublicHomepageWhyChooseUs | null>;

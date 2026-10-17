@@ -6,6 +6,8 @@ import PortfolioPage from "../app/(public)/portfolio/page";
 import { SiteHeader } from "../components/site-header";
 import { SiteFooter } from "../components/site-footer";
 import { HomepageServicesSection } from "../components/homepage-services-section";
+import { HomepageWhyChooseUsSection } from "../components/homepage-why-choose-us-section";
+import type { PublicHomepageWhyChooseUs } from "../lib/public-content";
 import type { PublicHeroSlide } from "../lib/public-content";
 import { EnquiryForm } from "../components/enquiry-form";
 import { siteMetadata } from "../lib/metadata";
@@ -27,6 +29,21 @@ const services = [
   { id: "4", slug: "private-celebrations", title: "Private celebrations", kicker: "FOR THE MOMENTS THAT BRING YOU TOGETHER", description: "An intimate get-together, made to feel unmistakably yours.", detail: "A plan shaped around the occasion.", imageRef: null },
 ];
 const homepageServices = { eyebrow: "What We Do", heading: "Top Event Planning Services in Chennai", highlight: "Event Planning Services", isVisible: true, serviceIds: ["1", "2", "3", "4"] };
+const whyChooseUs: PublicHomepageWhyChooseUs = {
+  heading: "Why Choose Chennai Events Management Company?",
+  supportingText: "Thoughtful planning, trusted people and a steady hand make every celebration feel effortless.",
+  isVisible: true,
+  featureCards: [
+    { id: "friendly-team", title: "Friendly Team", description: "We make every client feel welcome.", icon: "users" },
+    { id: "committed-to-excellence", title: "Committed to Excellence", description: "We deliver on our promises.", icon: "award" },
+    { id: "perfect-venues", title: "Perfect Venues", description: "The right setting for every occasion.", icon: "mapPin" },
+    { id: "dedicated-support", title: "Dedicated Support", description: "We're here when you need us.", icon: "headphones" },
+    { id: "unforgettable-experiences", title: "Unforgettable Experiences", description: "Creating memories that last.", icon: "sparkles" },
+    { id: "expert-management", title: "Expert Management", description: "Professional planning and coordination.", icon: "clipboard" },
+    { id: "creative-ideas", title: "Creative Ideas", description: "Fresh ideas for extraordinary events.", icon: "lightbulb" },
+    { id: "personalized-events", title: "Personalized Events", description: "Every celebration is uniquely yours.", icon: "heart" },
+  ],
+};
 const entries = [
   { id: "a", title: "A gathering study", description: "Original sample illustration of a candlelit celebration table.", imageRef: "/images/gathering-study.svg", altText: "Sample illustration of a candlelit celebration table", isSample: true },
   { id: "b", title: "Details in place", description: "Original sample illustration of an event table.", imageRef: "/images/table-study.svg", altText: "Sample illustration of an event table", isSample: true },
@@ -57,7 +74,8 @@ function stubCatalog() {
         : url.endsWith("/api/about-us") ? { aboutUs }
           : url.endsWith("/api/services") ? { services }
             : url.endsWith("/api/homepage-services") ? { section: homepageServices }
-              : { entries },
+              : url.endsWith("/api/homepage-why-choose-us") ? { section: whyChooseUs }
+            : { entries },
     };
   }));
 }
@@ -116,6 +134,9 @@ describe("TSG EVENTS public website", () => {
     expect(screen.getByText(aboutUs.firstParagraph)).toBeTruthy();
     expect(screen.getByText(aboutUs.secondParagraph)).toBeTruthy();
     expect(screen.getByRole("heading", { name: homepageServices.heading })).toBeTruthy();
+    expect(screen.getByRole("heading", { name: whyChooseUs.heading })).toBeTruthy();
+    expect(screen.getByText(whyChooseUs.supportingText)).toBeTruthy();
+    expect([...document.querySelectorAll(".home-why-card h3")].map((title) => title.textContent)).toEqual(whyChooseUs.featureCards.map((card) => card.title));
     const servicesCarousel = screen.getByRole("region", { name: "Event planning services" });
     expect(within(servicesCarousel).getByRole("link", { name: /Weddings/ }).getAttribute("href")).toBe("/services/weddings");
     expect(within(servicesCarousel).getByRole("link", { name: /Corporate events/ }).getAttribute("href")).toBe("/services/corporate-events");
@@ -130,7 +151,7 @@ describe("TSG EVENTS public website", () => {
     expect(aboutSection.querySelector(".home-about-image-shade")).toBeTruthy();
 
     const main = screen.getByRole("main", { name: "" });
-    expect([...main.children].map((child) => child.id)).toEqual(["home", "about", "services"]);
+    expect([...main.children].map((child) => child.id)).toEqual(["home", "about", "services", "why-choose-us"]);
     expect(document.querySelector("#work, #introduction, .contact-band")).toBeNull();
     expect(screen.queryByRole("heading", { name: /stories worth gathering for|every gathering starts somewhere/i })).toBeNull();
   });
@@ -182,6 +203,15 @@ describe("TSG EVENTS public website", () => {
   it("does not render the services section when hidden", () => {
     const { container } = render(<HomepageServicesSection section={{ ...homepageServices, isVisible: false }} services={services} />);
     expect(container.querySelector("#services")).toBeNull();
+  });
+
+  it("renders the Why Choose Us section only when visible and safely omits unsupported icons", () => {
+    const reordered = { ...whyChooseUs, featureCards: [...whyChooseUs.featureCards].reverse().map((feature, index) => index === 0 ? { ...feature, icon: "unsupported" } : feature) };
+    const { container, rerender } = render(<HomepageWhyChooseUsSection section={reordered} />);
+    expect([...container.querySelectorAll(".home-why-card h3")].map((title) => title.textContent)).toEqual(reordered.featureCards.map((feature) => feature.title));
+    expect(container.querySelectorAll(".home-why-icon")).toHaveLength(7);
+    rerender(<HomepageWhyChooseUsSection section={{ ...whyChooseUs, isVisible: false }} />);
+    expect(container.querySelector("#why-choose-us")).toBeNull();
   });
 
   it("respects the reduced-motion preference by disabling automatic movement", async () => {

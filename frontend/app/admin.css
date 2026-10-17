@@ -116,3 +116,27 @@
 .admin-homepage-services-form>.admin-about-visibility,.admin-homepage-services-form>.admin-form-actions{grid-column:1/-1}
 .admin-homepage-services-form>.admin-form-actions{margin-top:0}
 @media(max-width:767px){.admin-homepage-services-form{grid-template-columns:1fr}.admin-homepage-services-form>.admin-about-visibility,.admin-homepage-services-form>.admin-form-actions{grid-column:auto}}
+.admin-home-why-form{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:18px;margin-top:22px}
+.admin-home-why-form>.admin-about-visibility,.admin-home-why-cards,.admin-home-why-actions{grid-column:1/-1}
+.admin-home-why-cards{min-width:0;padding:18px;border:1px solid var(--line);background:#fff}
+.admin-home-why-cards>legend,.admin-home-why-card>legend{padding:0 7px;color:#344237;font-size:15px;font-weight:700}
+.admin-home-why-card{min-width:0;margin:12px 0 0;padding:16px;border:1px solid var(--line);background:var(--paper)}
+.admin-home-why-card-header{display:grid;grid-template-columns:minmax(0,1fr) auto;align-items:center;gap:14px}
+.admin-home-why-card-toggle{min-width:0;min-height:58px;display:flex;align-items:center;gap:14px;padding:4px 0;border:0;background:transparent;color:var(--ink);text-align:left;cursor:pointer}
+.admin-home-why-card-toggle:focus-visible{outline:3px solid #bc7954;outline-offset:3px}
+.admin-home-why-card-summary{min-width:0;display:grid;gap:3px}
+.admin-home-why-card-number{color:#9d6647;font-size:10px;font-weight:700;letter-spacing:.12em}
+.admin-home-why-card-title{overflow:hidden;font:600 19px/1.2 var(--serif);text-overflow:ellipsis;white-space:nowrap}
+.admin-home-why-card-preview{max-width:600px;overflow:hidden;color:var(--muted);font-size:13px;line-height:1.45;text-overflow:ellipsis;white-space:nowrap}
+.admin-home-why-chevron{width:11px;height:11px;flex:none;border-right:2px solid var(--green);border-bottom:2px solid var(--green);transform:rotate(45deg) translateY(-3px);transition:transform .18s ease}
+.admin-home-why-card-toggle[aria-expanded="true"] .admin-home-why-chevron{transform:rotate(225deg) translate(-2px,-1px)}
+.admin-home-why-card-editor{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px 18px;margin-top:14px;padding-top:15px;border-top:1px solid var(--line)}
+.admin-home-why-card-editor .admin-field{margin:0}
+.admin-home-why-card-editor .admin-field:last-child{grid-column:1/-1}
+.admin-home-why-card select{width:100%;min-height:46px;padding:10px 12px;border:1px solid #c9cbc2;background:#fff;color:var(--ink);font:inherit}
+.admin-home-why-card-actions{display:flex;flex-wrap:wrap;justify-content:flex-end;gap:6px}
+.admin-home-why-card-actions button{min-height:38px;padding:6px 12px;border:1px solid #c9cbc2;background:#fff;color:var(--green);cursor:pointer}
+.admin-home-why-card-actions button:disabled,.admin-home-why-actions button:disabled{opacity:.5;cursor:not-allowed}
+.admin-home-why-actions{display:flex;flex-wrap:wrap;justify-content:flex-end;gap:12px;margin-top:0}
+@media(max-width:767px){.admin-home-why-form{grid-template-columns:minmax(0,1fr)}.admin-home-why-form>.admin-about-visibility,.admin-home-why-cards,.admin-home-why-actions{grid-column:auto}.admin-home-why-actions{justify-content:stretch}.admin-home-why-actions button{flex:1 1 180px}.admin-home-why-card{padding:12px}.admin-home-why-card-header{grid-template-columns:minmax(0,1fr);gap:8px}.admin-home-why-card-actions{justify-content:flex-start}.admin-home-why-card-actions button{min-height:40px}.admin-home-why-card-editor{grid-template-columns:minmax(0,1fr)}.admin-home-why-card-editor .admin-field:last-child{grid-column:auto}}
+@media(prefers-reduced-motion:reduce){.admin-home-why-chevron{transition:none}}

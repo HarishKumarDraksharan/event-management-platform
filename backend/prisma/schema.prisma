@@ -95,6 +95,15 @@ model HomepageServicesSection {
   updatedAt  DateTime @default(now()) @updatedAt @db.Timestamptz(6)
 }
 
+model HomepageWhyChooseUsSection {
+  id             String   @id @default("home") @db.VarChar(20)
+  heading        String   @db.VarChar(200)
+  supportingText String   @db.VarChar(500)
+  isVisible      Boolean  @default(true)
+  featureCards   Json
+  updatedAt      DateTime @default(now()) @updatedAt @db.Timestamptz(6)
+}
+
 model User {
   id            String    @id
   name          String

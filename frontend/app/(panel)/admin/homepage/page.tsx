@@ -7,6 +7,7 @@ const sections = [
   { number: "SECTION 1", title: "Hero Carousel", href: "/admin/hero-slides", description: "Edit slides, display order, and publication status." },
   { number: "SECTION 2", title: "About Us", href: "/admin/about-us", description: "Edit the story, event image, button, and section visibility." },
   { number: "SECTION 3", title: "Services", href: "/admin/homepage-services", description: "Choose services, adjust their order, and manage section visibility." },
+  { number: "SECTION 4", title: "Why Choose Us", href: "/admin/homepage-why-choose-us", description: "Edit the section story, feature cards, icons, order, and visibility." },
 ];
 
 export default function AdminHomepagePage() {
