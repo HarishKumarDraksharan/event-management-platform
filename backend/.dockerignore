@@ -1,6 +1,7 @@
 node_modules
 .next
 generated
+uploads
 .git
 .env*
 !.env.example

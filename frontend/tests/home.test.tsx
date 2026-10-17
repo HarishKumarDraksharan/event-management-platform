@@ -5,9 +5,11 @@ import AboutPage from "../app/(public)/about/page";
 import PortfolioPage from "../app/(public)/portfolio/page";
 import { SiteHeader } from "../components/site-header";
 import { SiteFooter } from "../components/site-footer";
+import { HeroCarousel } from "../components/hero-carousel";
 import { HomepageServicesSection } from "../components/homepage-services-section";
 import { HomepageWhyChooseUsSection } from "../components/homepage-why-choose-us-section";
-import type { PublicHomepageWhyChooseUs } from "../lib/public-content";
+import { HomepageGallerySection } from "../components/homepage-gallery-section";
+import type { PublicHomepageGallery, PublicHomepageWhyChooseUs } from "../lib/public-content";
 import type { PublicHeroSlide } from "../lib/public-content";
 import { EnquiryForm } from "../components/enquiry-form";
 import { siteMetadata } from "../lib/metadata";
@@ -44,6 +46,15 @@ const whyChooseUs: PublicHomepageWhyChooseUs = {
     { id: "personalized-events", title: "Personalized Events", description: "Every celebration is uniquely yours.", icon: "heart" },
   ],
 };
+const homepageGallery: PublicHomepageGallery = {
+  eyebrow: "Moments We've Created",
+  heading: "Showcasing Our Events & Memorable Moments",
+  isVisible: true,
+  entries: [
+    { id: "gallery-a", title: "A gathering study", imageRef: "/images/gathering-study.svg", altText: "Sample illustration of a candlelit celebration table" },
+    { id: "gallery-b", title: "Details in place", imageRef: "/images/table-study.svg", altText: "Sample illustration of an event table" },
+  ],
+};
 const entries = [
   { id: "a", title: "A gathering study", description: "Original sample illustration of a candlelit celebration table.", imageRef: "/images/gathering-study.svg", altText: "Sample illustration of a candlelit celebration table", isSample: true },
   { id: "b", title: "Details in place", description: "Original sample illustration of an event table.", imageRef: "/images/table-study.svg", altText: "Sample illustration of an event table", isSample: true },
@@ -75,6 +86,10 @@ function stubCatalog() {
           : url.endsWith("/api/services") ? { services }
             : url.endsWith("/api/homepage-services") ? { section: homepageServices }
               : url.endsWith("/api/homepage-why-choose-us") ? { section: whyChooseUs }
+              : url.endsWith("/api/homepage-gallery") ? {
+                section: { eyebrow: homepageGallery.eyebrow, heading: homepageGallery.heading, isVisible: homepageGallery.isVisible },
+                entries: homepageGallery.entries,
+              }
             : { entries },
     };
   }));
@@ -123,6 +138,12 @@ function mockCarouselAnimationSupport() {
 }
 
 describe("TSG EVENTS public website", () => {
+  it("serves managed hero uploads directly instead of routing them through Next image optimization", () => {
+    const slide = { ...heroSlides[0], imageRef: "/api/uploads/3fc6ab10-811a-46d9-a817-f1780e9e91ec.png" };
+    const { container } = render(<HeroCarousel slides={[slide]} />);
+    expect(container.querySelector<HTMLImageElement>(".hero-slide-image")?.getAttribute("src")).toBe(slide.imageRef);
+  });
+
   it("renders the hero, About Us, and services section in order without extra sections", async () => {
     stubCatalog();
     render(await Home());
@@ -137,6 +158,10 @@ describe("TSG EVENTS public website", () => {
     expect(screen.getByRole("heading", { name: whyChooseUs.heading })).toBeTruthy();
     expect(screen.getByText(whyChooseUs.supportingText)).toBeTruthy();
     expect([...document.querySelectorAll(".home-why-card h3")].map((title) => title.textContent)).toEqual(whyChooseUs.featureCards.map((card) => card.title));
+    expect(screen.getByRole("heading", { name: homepageGallery.heading })).toBeTruthy();
+    expect(screen.getByText(homepageGallery.eyebrow)).toBeTruthy();
+    expect([...document.querySelectorAll(".home-gallery-card img")].map((image) => image.getAttribute("alt"))).toEqual(homepageGallery.entries.map((entry) => entry.altText));
+    expect([...document.querySelectorAll(".home-gallery-card img")].map((image) => image.getAttribute("src"))).toEqual(homepageGallery.entries.map((entry) => entry.imageRef));
     const servicesCarousel = screen.getByRole("region", { name: "Event planning services" });
     expect(within(servicesCarousel).getByRole("link", { name: /Weddings/ }).getAttribute("href")).toBe("/services/weddings");
     expect(within(servicesCarousel).getByRole("link", { name: /Corporate events/ }).getAttribute("href")).toBe("/services/corporate-events");
@@ -151,9 +176,39 @@ describe("TSG EVENTS public website", () => {
     expect(aboutSection.querySelector(".home-about-image-shade")).toBeTruthy();
 
     const main = screen.getByRole("main", { name: "" });
-    expect([...main.children].map((child) => child.id)).toEqual(["home", "about", "services", "why-choose-us"]);
+    expect([...main.children].map((child) => child.id)).toEqual(["home", "about", "services", "why-choose-us", "gallery"]);
     expect(document.querySelector("#work, #introduction, .contact-band")).toBeNull();
     expect(screen.queryByRole("heading", { name: /stories worth gathering for|every gathering starts somewhere/i })).toBeNull();
+  });
+
+  it("shows an accessible empty state for an empty selected gallery", () => {
+    const { container, rerender } = render(<HomepageGallerySection gallery={{ ...homepageGallery, entries: [] }} />);
+    expect(screen.getByRole("status").textContent).toContain("Our gallery is taking shape");
+    expect(document.querySelectorAll(".home-gallery-card")).toHaveLength(0);
+    rerender(<HomepageGallerySection gallery={{ ...homepageGallery, isVisible: false }} />);
+    expect(container.querySelector("#gallery")).toBeNull();
+  });
+
+  it("reveals gallery cards as they enter view and disables observer motion when reduced motion is requested", () => {
+    const observed: Element[] = [];
+    let callback: IntersectionObserverCallback | undefined;
+    vi.stubGlobal("IntersectionObserver", class {
+      constructor(onChange: IntersectionObserverCallback) { callback = onChange; }
+      observe(target: Element) { observed.push(target); }
+      unobserve() {}
+      disconnect() {}
+    });
+    vi.stubGlobal("matchMedia", vi.fn(() => ({ matches: false, addEventListener: vi.fn(), removeEventListener: vi.fn() })));
+    const { container, unmount } = render(<HomepageGallerySection gallery={homepageGallery} />);
+    expect(container.querySelector(".home-gallery")?.classList.contains("has-gallery-reveal")).toBe(true);
+    expect(observed).toHaveLength(homepageGallery.entries.length);
+    act(() => callback?.([{ isIntersecting: true, target: observed[0] } as IntersectionObserverEntry], {} as IntersectionObserver));
+    expect(observed[0].classList.contains("is-visible")).toBe(true);
+    unmount();
+
+    vi.stubGlobal("matchMedia", vi.fn(() => ({ matches: true, addEventListener: vi.fn(), removeEventListener: vi.fn() })));
+    const reduced = render(<HomepageGallerySection gallery={homepageGallery} />);
+    expect(reduced.container.querySelector(".home-gallery")?.classList.contains("has-gallery-reveal")).toBe(false);
   });
 
   it("shows service cards in configured order, uses a local image fallback, and moves with controls", () => {

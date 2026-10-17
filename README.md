@@ -97,6 +97,12 @@ Regenerate the client after schema changes (the Docker build also generates it):
 docker compose -f compose.yaml -f compose.dev.yaml exec backend npm run db:generate
 ```
 
+## Gallery image uploads
+
+Administrators can upload JPEG, PNG, and WebP images when creating or editing a gallery entry, hero slide, About Us section, or service. The backend decodes and normalizes each image, keeps it in a generated-name managed directory, and serves it through `/api/uploads/`. Selected-but-unsaved uploads are private to administrators and expire after 24 hours. Replacing an image updates its content record before attempting reference-aware cleanup of the previous managed image; cleanup checks portfolio, hero, service, and About Us references and safely queues files that cannot yet be removed. The Homepage Gallery continues to reference published gallery entries and never owns or deletes their image files.
+
+Uploads are stored in the `gallery_uploads` named volume mounted at `/app/uploads`, separate from source code and container images. Normal Compose recreation preserves it. The default maximum source image size is 10 MiB. Set `MAX_GALLERY_IMAGE_SIZE_BYTES` in the ignored `.env` file to a positive value up to 100 MiB; Nginx allows the corresponding multipart overhead. Back up this volume as persistent customer media. Production deployments currently use local persistent storage; an S3 deployment still requires a configured storage adapter, bucket, access policy, and credentials supplied through the deployment's secret manager.
+
 ## Phase 4: administrator access
 
 Authentication runs in the backend with Better Auth and the existing Prisma 7/PostgreSQL database. Passwords use Better Auth's scrypt hashing. The backend stores opaque sessions in PostgreSQL and sends them in `HttpOnly`, `SameSite=Lax` cookies; `Secure` is enabled in production. Session lifetime is 12 hours with periodic refresh. Signup and password reset are not exposed. The Admin plugin supplies server-side role fields, while the public auth route only allows sign-in, sign-out, and current-session checks.

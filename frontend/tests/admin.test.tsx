@@ -9,10 +9,12 @@ import { AdminHeroSlideManager } from "../components/admin-hero-slide-manager";
 import { AdminHomepageIntroductionManager } from "../components/admin-homepage-introduction-manager";
 import { AdminHomepageServicesManager } from "../components/admin-homepage-services-manager";
 import { AdminHomepageWhyChooseUsManager } from "../components/admin-homepage-why-choose-us-manager";
+import { AdminHomepageGalleryManager } from "../components/admin-homepage-gallery-manager";
 import AdminDashboard from "../app/(panel)/admin/page";
 import AdminHomepagePage from "../app/(panel)/admin/homepage/page";
 import AdminAboutUsPage from "../app/(panel)/admin/about-us/page";
 import AdminHomepageWhyChooseUsPage from "../app/(panel)/admin/homepage-why-choose-us/page";
+import AdminHomepageGalleryPage from "../app/(panel)/admin/homepage-gallery/page";
 
 const { router } = vi.hoisted(() => ({ router: { replace: vi.fn(), refresh: vi.fn() } }));
 vi.mock("next/navigation", () => ({ useRouter: () => router }));
@@ -61,7 +63,58 @@ describe("admin content overview", () => {
     expect(within(section).getByRole("link", { name: /about us/i }).getAttribute("href")).toBe("/admin/about-us");
     expect(within(section).getByRole("link", { name: /services/i }).getAttribute("href")).toBe("/admin/homepage-services");
     expect(within(section).getByRole("link", { name: /why choose us/i }).getAttribute("href")).toBe("/admin/homepage-why-choose-us");
-    expect(section.querySelectorAll("a")).toHaveLength(4);
+    expect(within(section).getByRole("link", { name: /our gallery/i }).getAttribute("href")).toBe("/admin/homepage-gallery");
+    expect(section.querySelectorAll("a")).toHaveLength(5);
+  });
+
+  it("selects and orders published, unpublished, and sample gallery entries", async () => {
+    const entries = [
+      { id: "00000000-0000-4000-8000-000000000001", title: "First celebration", imageRef: "/images/gathering-study.svg", altText: "A table set for a celebration", isPublished: true, isSample: false },
+      { id: "00000000-0000-4000-8000-000000000002", title: "Second celebration", imageRef: "/images/table-study.svg", altText: "An event table", isPublished: true, isSample: false },
+      { id: "00000000-0000-4000-8000-000000000003", title: "Unpublished moment", imageRef: "/images/colour-study.svg", altText: "A color study", isPublished: false, isSample: false },
+      { id: "00000000-0000-4000-8000-000000000004", title: "Sample moment", imageRef: "/images/gathering-study.svg", altText: "A sample celebration", isPublished: true, isSample: true },
+    ];
+    const initialSection = { eyebrow: "Moments We've Created", heading: "Showcasing Our Events & Memorable Moments", isVisible: true };
+    const fetchMock = vi.fn(async (_input: RequestInfo | URL, init?: RequestInit) => {
+      if (!init?.method) return { ok: true, json: async () => ({ section: initialSection, entryIds: [entries[0].id], entries }) };
+      const body = JSON.parse(String(init.body));
+      return { ok: true, json: async () => ({ section: { eyebrow: body.eyebrow, heading: body.heading, isVisible: body.isVisible }, entryIds: body.entryIds }) };
+    });
+    vi.stubGlobal("fetch", fetchMock);
+    render(<AdminHomepageGalleryPage />);
+    await waitFor(() => expect(screen.getByRole("heading", { name: "Edit homepage Gallery section" })).toBeTruthy());
+    expect(screen.getByRole<HTMLInputElement>("checkbox", { name: "Show First celebration on homepage" }).checked).toBe(true);
+    const unpublishedCheckbox = screen.getByRole<HTMLInputElement>("checkbox", { name: "Show Unpublished moment on homepage" });
+    const sampleCheckbox = screen.getByRole<HTMLInputElement>("checkbox", { name: "Show Sample moment on homepage" });
+    expect(unpublishedCheckbox.disabled).toBe(false);
+    expect(sampleCheckbox.disabled).toBe(false);
+    expect(screen.getByText(/Unpublished · selected, but hidden from visitors until published/)).toBeTruthy();
+    expect(screen.getByText(/Sample artwork · excluded from public gallery/)).toBeTruthy();
+    fireEvent.click(screen.getByRole("checkbox", { name: "Show Second celebration on homepage" }));
+    fireEvent.click(screen.getByRole("button", { name: "Move Second celebration up" }));
+    fireEvent.click(screen.getByRole("button", { name: "Remove First celebration from homepage" }));
+    fireEvent.click(unpublishedCheckbox);
+    fireEvent.click(sampleCheckbox);
+    fireEvent.click(screen.getByRole("button", { name: "Move Sample moment up" }));
+    fireEvent.click(screen.getByRole("checkbox", { name: "Show Gallery section on the homepage" }));
+    fireEvent.change(screen.getByLabelText("Section heading"), { target: { value: "Our most memorable moments" } });
+    fireEvent.submit(screen.getByRole("button", { name: "Save Gallery section" }).closest("form")!);
+    await waitFor(() => expect(screen.getByRole("status").textContent).toBe("Homepage Gallery section saved."));
+    const saved = JSON.parse(String(fetchMock.mock.calls.at(-1)?.[1]?.body)) as { eyebrow: string; heading: string; isVisible: boolean; entryIds: string[] };
+    expect(saved.heading).toBe("Our most memorable moments");
+    expect(saved.isVisible).toBe(false);
+    expect(saved.entryIds).toEqual([entries[1].id, entries[3].id, entries[2].id]);
+    expect(fetchMock).toHaveBeenCalledWith("/api/admin/homepage-gallery", expect.objectContaining({
+      method: "PUT",
+      credentials: "same-origin",
+    }));
+  });
+
+  it("shows an accessible load error in the homepage Gallery editor", async () => {
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValue({ ok: false, json: async () => ({ error: "Gallery settings are unavailable." }) }));
+    render(<AdminHomepageGalleryManager />);
+    expect(await screen.findByRole("alert")).toBeTruthy();
+    expect(screen.getByText("Gallery settings are unavailable.")).toBeTruthy();
   });
 
   it("edits, adds, removes, reorders, and saves Why Choose Us features", async () => {
@@ -210,10 +263,14 @@ describe("admin content overview", () => {
       destinationUrl: "/about",
       isVisible: true,
     };
-    let saved = initial;
-    const fetchMock = vi.fn(async (_input: RequestInfo | URL, init?: RequestInit) => {
+    let saved: Record<string, unknown> = initial;
+    const fetchMock = vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
+      if (!init?.method && input === "/api/admin/portfolio/uploads") return { ok: true, headers: new Headers({ "X-Max-Gallery-Image-Size-Bytes": String(10 * 1024 * 1024) }), json: async () => ({}) };
       if (!init?.method) return { ok: true, json: async () => ({ aboutUs: saved }) };
+      if (input === "/api/admin/portfolio/uploads") return { ok: true, json: async () => ({ token: "about-upload-token", previewUrl: "/api/admin/portfolio/uploads/about-upload-token" }) };
+      if (String(input).endsWith("/uploads/about-upload-token")) return { ok: true, json: async () => ({ deleted: true }) };
       saved = JSON.parse(String(init.body));
+      if (saved.imageUploadToken) saved.imageUrl = "/api/uploads/3fc6ab10-811a-46d9-a817-f1780e9e91ec.png";
       return { ok: true, json: async () => ({ aboutUs: saved }) };
     });
     vi.stubGlobal("fetch", fetchMock);
@@ -221,13 +278,15 @@ describe("admin content overview", () => {
     await waitFor(() => expect(screen.getByRole("heading", { name: "Edit homepage About Us section" })).toBeTruthy());
 
     fireEvent.change(screen.getByLabelText("Main heading"), { target: { value: "Saved About Us heading" } });
-    fireEvent.change(screen.getByLabelText("Event image URL"), { target: { value: "/images/table-study.svg" } });
+    await waitFor(() => expect(screen.getByLabelText("Choose replacement image").hasAttribute("disabled")).toBe(false));
+    fireEvent.change(screen.getByLabelText("Choose replacement image"), { target: { files: [new File(["image"], "event.png", { type: "image/png" })] } });
+    await screen.findByRole("img", { name: /Preview of selected replacement/ });
     fireEvent.click(screen.getByRole("checkbox", { name: "Show About Us section on the homepage" }));
     fireEvent.submit(screen.getByRole("button", { name: "Save About Us section" }).closest("form")!);
 
-    await waitFor(() => expect(screen.getByRole("status").textContent).toBe("About Us section saved."));
+    await waitFor(() => expect(screen.getByText("About Us section saved.")).toBeTruthy());
     expect(fetchMock).toHaveBeenCalledWith("/api/admin/about-us", expect.objectContaining({ method: "PUT", credentials: "same-origin" }));
-    expect(saved).toMatchObject({ heading: "Saved About Us heading", imageUrl: "/images/table-study.svg", isVisible: false });
+    expect(saved).toMatchObject({ heading: "Saved About Us heading", imageUrl: "/api/uploads/3fc6ab10-811a-46d9-a817-f1780e9e91ec.png", imageUploadToken: "about-upload-token", expectedImageRef: initial.imageUrl, isVisible: false });
     expect(screen.getByRole("link", { name: /view the public about us page/i }).getAttribute("href")).toBe("/about");
   });
 });
@@ -237,8 +296,10 @@ describe("homepage slide management", () => {
     const existing = { id: "slide-one", heading: "Existing slide", description: "An existing sample description.", buttonLabel: "Contact us", destinationUrl: "/contact", imageRef: "/images/gathering-study.svg", isPublished: false, sortOrder: 1 };
     const created = { id: "slide-two", heading: "New slide", description: "A new sample description.", buttonLabel: "Explore", destinationUrl: "/about", imageRef: "/images/table-study.svg", isPublished: false, sortOrder: 2 };
     let stored = existing;
-    const fetchMock = vi.fn(async (_input: RequestInfo | URL, init?: RequestInit) => {
+    const fetchMock = vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
+      if (!init?.method && input === "/api/admin/portfolio/uploads") return { ok: true, headers: new Headers({ "X-Max-Gallery-Image-Size-Bytes": String(10 * 1024 * 1024) }), json: async () => ({}) };
       if (!init?.method) return { ok: true, json: async () => ({ slides: [stored] }) };
+      if (input === "/api/admin/portfolio/uploads") return { ok: true, json: async () => ({ token: "hero-upload-token", previewUrl: "/api/admin/portfolio/uploads/hero-upload-token" }) };
       const body = JSON.parse(String(init.body));
       if (init.method === "POST") return { ok: true, json: async () => ({ slide: { ...created, ...body } }) };
       stored = { ...stored, ...body };
@@ -279,11 +340,15 @@ describe("homepage slide management", () => {
     fireEvent.change(within(createForm).getByLabelText("Button label"), { target: { value: "Explore" } });
     fireEvent.change(within(createForm).getByLabelText("Description"), { target: { value: "A new sample description." } });
     fireEvent.change(within(createForm).getByLabelText("Destination URL"), { target: { value: "/about" } });
-    fireEvent.change(within(createForm).getByLabelText("Image reference"), { target: { value: "/images/table-study.svg" } });
+    await waitFor(() => expect(within(createForm).getByLabelText("Choose slide image").hasAttribute("disabled")).toBe(false));
+    fireEvent.change(within(createForm).getByLabelText("Choose slide image"), { target: { files: [new File(["image"], "hero.png", { type: "image/png" })] } });
+    await within(createPanel).findByRole("img", { name: /Preview of selected replacement/ });
     fireEvent.change(within(createForm).getByLabelText("Display order"), { target: { value: "2" } });
     fireEvent.submit(createForm);
     await waitFor(() => expect(screen.getByRole("heading", { name: /New slide/ })).toBeTruthy());
     expect(fetchMock).toHaveBeenCalledWith("/api/admin/hero-slides", expect.objectContaining({ method: "POST", credentials: "same-origin" }));
+    const createBody = JSON.parse(String(fetchMock.mock.calls.find(([url, init]) => url === "/api/admin/hero-slides" && init?.method === "POST")?.[1]?.body));
+    expect(createBody).toMatchObject({ imageUploadToken: "hero-upload-token", expectedImageRef: "" });
     const newSlideCard = screen.getByRole("heading", { name: /New slide/ }).closest("article")!;
     const newSlideToggle = within(newSlideCard).getByRole("button", { name: /New slide/ });
     expect(newSlideToggle.getAttribute("aria-expanded")).toBe("false");
@@ -355,12 +420,15 @@ describe("service editor field labels", () => {
 
   it("keeps service create, edit, and activation actions available in collapsed sections", async () => {
     const existing = { id: "service-one", slug: "weddings", title: "Weddings", kicker: "Kicker", description: "A service description", detail: "Service details", imageRef: null, isActive: true, sortOrder: 1 };
-    let saved = existing;
+    let saved: { id: string; slug: string; title: string; kicker: string; description: string; detail: string; imageRef: string | null; isActive: boolean; sortOrder: number } = existing;
     const fetchMock = vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
+      if (!init?.method && input === "/api/admin/portfolio/uploads") return { ok: true, headers: new Headers({ "X-Max-Gallery-Image-Size-Bytes": String(10 * 1024 * 1024) }), json: async () => ({}) };
       if (!init?.method) return { ok: true, json: async () => ({ services: [saved] }) };
+      if (input === "/api/admin/portfolio/uploads") return { ok: true, json: async () => ({ token: "service-upload-token", previewUrl: "/api/admin/portfolio/uploads/service-upload-token" }) };
       const body = JSON.parse(String(init.body));
       if (init.method === "POST") return { ok: true, json: async () => ({ service: { ...body, id: "service-two", isActive: true } }) };
       saved = { ...saved, ...body };
+      if (body.imageUploadToken) saved.imageRef = "/api/uploads/3fc6ab10-811a-46d9-a817-f1780e9e91ec.png";
       return { ok: true, json: async () => ({ service: saved }) };
     });
     vi.stubGlobal("fetch", fetchMock);
@@ -392,8 +460,13 @@ describe("service editor field labels", () => {
     expect(document.getElementById(editToggle.getAttribute("aria-controls")!)?.hasAttribute("hidden")).toBe(false);
     const editForm = within(card).getByRole("button", { name: "Save changes" }).closest("form")!;
     fireEvent.change(within(editForm).getByLabelText("Title"), { target: { value: "Wedding planning" } });
+    await waitFor(() => expect(within(editForm).getByLabelText("Choose replacement image").hasAttribute("disabled")).toBe(false));
+    fireEvent.change(within(editForm).getByLabelText("Choose replacement image"), { target: { files: [new File(["image"], "wedding.png", { type: "image/png" })] } });
+    await within(editForm).findByRole("img", { name: /Preview of selected replacement/ });
     fireEvent.submit(editForm);
     await waitFor(() => expect(fetchMock).toHaveBeenCalledWith("/api/admin/services/service-one", expect.objectContaining({ method: "PATCH" })));
+    const serviceBody = JSON.parse(String(fetchMock.mock.calls.find(([url, init]) => url === "/api/admin/services/service-one" && init?.method === "PATCH")?.[1]?.body));
+    expect(serviceBody).toMatchObject({ imageUploadToken: "service-upload-token", expectedImageRef: "" });
     fireEvent.click(within(card).getByRole("button", { name: "Deactivate" }));
     await waitFor(() => expect(screen.getByText("Service deactivated.")).toBeTruthy());
   });
@@ -441,6 +514,71 @@ describe("gallery management accordion", () => {
     await waitFor(() => expect(fetchMock).toHaveBeenCalledWith("/api/admin/portfolio/entry-one", expect.objectContaining({ method: "PATCH" })));
     fireEvent.click(within(card).getByRole("button", { name: "Publish" }));
     await waitFor(() => expect(screen.getByText("Portfolio entry published.")).toBeTruthy());
+  });
+
+  it("previews a replacement and saves it without overwriting the current image before save", async () => {
+    const existing = { id: "entry-upload", title: "Launch event", description: "A launch event description.", imageRef: "/images/gathering-study.svg", altText: "A launch event", isSample: false, isPublished: true, sortOrder: 2 };
+    let saved = existing;
+    const fetchMock = vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
+      if (!init?.method) return { ok: true, headers: new Headers({ "X-Max-Gallery-Image-Size-Bytes": String(10 * 1024 * 1024) }), json: async () => ({ entries: [saved] }) };
+      if (input === "/api/admin/portfolio/uploads") return { ok: true, json: async () => ({ token: "upload-token", previewUrl: "/api/admin/portfolio/uploads/upload-token" }) };
+      if (String(input).endsWith("/uploads/upload-token")) return { ok: true, json: async () => ({ deleted: true }) };
+      const body = JSON.parse(String(init.body));
+      saved = { ...saved, ...body, imageRef: "/api/uploads/3fc6ab10-811a-46d9-a817-f1780e9e91ec.png" };
+      return { ok: true, json: async () => ({ entry: saved }) };
+    });
+    vi.stubGlobal("fetch", fetchMock);
+    render(<AdminPortfolioManager />);
+    await waitFor(() => expect(screen.getByRole("heading", { name: /Launch event/ })).toBeTruthy());
+
+    const card = screen.getByRole("heading", { name: /Launch event/ }).closest("article")!;
+    fireEvent.click(within(card).getByRole("button", { name: /Launch event/ }));
+    const currentImage = within(card).getByRole("img", { name: "A launch event" });
+    expect(currentImage.getAttribute("src")).toBe(existing.imageRef);
+
+    const replacement = new File(["image"], "launch.png", { type: "image/png" });
+    fireEvent.change(within(card).getByLabelText("Choose replacement image"), { target: { files: [replacement] } });
+    const preview = await within(card).findByRole("img", { name: /Preview of selected replacement/ });
+    expect(preview.getAttribute("src")).toBe("/api/admin/portfolio/uploads/upload-token");
+    expect(currentImage.getAttribute("src")).toBe(existing.imageRef);
+    expect(within(card).getByText("Image uploaded and ready to save.")).toBeTruthy();
+
+    const editForm = within(card).getByRole("button", { name: "Save changes" }).closest("form")!;
+    fireEvent.change(within(editForm).getByLabelText("Title"), { target: { value: "Launch celebration" } });
+    fireEvent.submit(editForm);
+    await waitFor(() => expect(fetchMock).toHaveBeenCalledWith("/api/admin/portfolio/entry-upload", expect.objectContaining({ method: "PATCH" })));
+    const patchBody = JSON.parse(String(fetchMock.mock.calls.find(([url, init]) => url === "/api/admin/portfolio/entry-upload" && init?.method === "PATCH")?.[1]?.body));
+    expect(patchBody).toMatchObject({ imageUploadToken: "upload-token", expectedImageRef: existing.imageRef, title: "Launch celebration" });
+    expect(patchBody.imageRef).toBeUndefined();
+  });
+
+  it("allows canceling a staged replacement while keeping the original image reference", async () => {
+    const existing = { id: "entry-cancel", title: "Reception", description: "A reception description.", imageRef: "/images/table-study.svg", altText: "Reception tables", isSample: false, isPublished: true, sortOrder: 1 };
+    const fetchMock = vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
+      if (!init?.method) return { ok: true, headers: new Headers(), json: async () => ({ entries: [existing] }) };
+      if (input === "/api/admin/portfolio/uploads") return { ok: true, json: async () => ({ token: "cancel-token", previewUrl: "/api/admin/portfolio/uploads/cancel-token" }) };
+      if (String(input).endsWith("/uploads/cancel-token")) return { ok: true, json: async () => ({ deleted: true }) };
+      return { ok: true, json: async () => ({ entry: existing }) };
+    });
+    vi.stubGlobal("fetch", fetchMock);
+    render(<AdminPortfolioManager />);
+    await waitFor(() => expect(screen.getByRole("heading", { name: /Reception/ })).toBeTruthy());
+
+    const card = screen.getByRole("heading", { name: /Reception/ }).closest("article")!;
+    fireEvent.click(within(card).getByRole("button", { name: /Reception/ }));
+    fireEvent.change(within(card).getByLabelText("Choose replacement image"), { target: { files: [new File(["image"], "replacement.webp", { type: "image/webp" })] } });
+    await within(card).findByRole("img", { name: /Preview of selected replacement/ });
+    fireEvent.click(within(card).getByRole("button", { name: "Cancel replacement" }));
+    await waitFor(() => expect(within(card).queryByRole("img", { name: /Preview of selected replacement/ })).toBeNull());
+
+    const editForm = within(card).getByRole("button", { name: "Save changes" }).closest("form")!;
+    fireEvent.submit(editForm);
+    await waitFor(() => expect(fetchMock).toHaveBeenCalledWith("/api/admin/portfolio/entry-cancel", expect.objectContaining({ method: "PATCH" })));
+    const patchBody = JSON.parse(String(fetchMock.mock.calls.find(([url, init]) => url === "/api/admin/portfolio/entry-cancel" && init?.method === "PATCH")?.[1]?.body));
+    expect(patchBody.imageUploadToken).toBeUndefined();
+    expect(patchBody.imageRef).toBeUndefined();
+    expect(patchBody.expectedImageRef).toBeUndefined();
+    expect(existing.imageRef).toBe("/images/table-study.svg");
   });
 });
 

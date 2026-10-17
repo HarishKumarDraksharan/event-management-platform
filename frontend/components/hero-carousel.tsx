@@ -71,7 +71,7 @@ export function HeroCarousel({ slides, intervalMs = 6500 }: HeroCarouselProps) {
   >
     <div className="hero-slide-stack" aria-live="off">
       {slides.map((slide, index) => <article className={`hero-slide${index === activeIndex ? " is-current" : ""}`} key={slide.id} role="group" aria-roledescription="slide" aria-label={`${index + 1} of ${count}`} aria-hidden={index !== activeIndex}>
-        <Image src={slide.imageRef} alt="" fill priority={index === 0} sizes="100vw" className="hero-slide-image" />
+        <Image src={slide.imageRef} alt="" fill priority={index === 0} sizes="100vw" className="hero-slide-image" unoptimized={slide.imageRef.startsWith("/api/uploads/")} />
         <div className="hero-slide-shade" />
         <div className="hero-slide-copy">
           <p className="eyebrow">TSG EVENTS <span aria-hidden="true">·</span> THOUGHTFULLY PLANNED</p>

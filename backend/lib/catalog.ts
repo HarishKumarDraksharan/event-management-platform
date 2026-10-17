@@ -1,3 +1,5 @@
+import { isManagedGalleryImageRef } from "./managed-gallery-image-ref";
+
 export type ServiceInput = {
   slug: string;
   title: string;
@@ -46,7 +48,7 @@ export function validateServiceInput(value: unknown): Validation<ServiceInput> {
   const detail = text(value.detail, 10, 2000);
   const imageRef = value.imageRef === undefined || value.imageRef === null || value.imageRef === "" ? null : text(value.imageRef, 1, 200);
   const order = sortOrder(value.sortOrder);
-  if (!slug || !/^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(slug) || !title || !kicker || !description || !detail || (imageRef !== null && !serviceImageReferences.has(imageRef)) || order === null) {
+  if (!slug || !/^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(slug) || !title || !kicker || !description || !detail || (imageRef !== null && !serviceImageReferences.has(imageRef) && !isManagedGalleryImageRef(imageRef)) || order === null) {
     return { ok: false, message: "Check the service fields and try again." };
   }
   return { ok: true, value: { slug, title, kicker, description, detail, imageRef, sortOrder: order } };
@@ -68,7 +70,7 @@ export function validateServicePatch(value: unknown): Validation<Partial<Service
       if (value.imageRef === null || value.imageRef === "") result.imageRef = null;
       else {
         const imageRef = text(value.imageRef, 1, 200);
-        if (!imageRef || !serviceImageReferences.has(imageRef)) return { ok: false, message: "Choose an approved local service image." };
+        if (!imageRef || (!serviceImageReferences.has(imageRef) && !isManagedGalleryImageRef(imageRef))) return { ok: false, message: "Choose an approved local service image." };
         result.imageRef = imageRef;
       }
     }

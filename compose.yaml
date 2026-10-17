@@ -31,6 +31,9 @@ services:
       DATABASE_URL: postgresql://${POSTGRES_USER:?Set POSTGRES_USER in .env}:${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in .env}@postgres:5432/${POSTGRES_DB:?Set POSTGRES_DB in .env}?schema=public
       BETTER_AUTH_URL: ${BETTER_AUTH_URL:?Set BETTER_AUTH_URL in .env}
       BETTER_AUTH_SECRET: ${BETTER_AUTH_SECRET:?Set BETTER_AUTH_SECRET in .env}
+      MAX_GALLERY_IMAGE_SIZE_BYTES: ${MAX_GALLERY_IMAGE_SIZE_BYTES:-10485760}
+    volumes:
+      - gallery_uploads:/app/uploads
     expose:
       - "3001"
     depends_on:
@@ -94,3 +97,4 @@ networks:
 
 volumes:
   postgres_data:
+  gallery_uploads:

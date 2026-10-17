@@ -104,6 +104,15 @@ model HomepageWhyChooseUsSection {
   updatedAt      DateTime @default(now()) @updatedAt @db.Timestamptz(6)
 }
 
+model HomepageGallerySection {
+  id         String   @id @default("home") @db.VarChar(20)
+  eyebrow    String   @db.VarChar(120)
+  heading    String   @db.VarChar(200)
+  isVisible  Boolean  @default(true)
+  entryIds   String[] @default([]) @db.Uuid
+  updatedAt  DateTime @default(now()) @updatedAt @db.Timestamptz(6)
+}
+
 model User {
   id            String    @id
   name          String

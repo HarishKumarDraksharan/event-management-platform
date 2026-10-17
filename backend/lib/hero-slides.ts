@@ -1,3 +1,5 @@
+import { isManagedGalleryImageRef } from "./managed-gallery-image-ref";
+
 export type HeroSlideInput = {
   heading: string;
   description: string;
@@ -47,7 +49,7 @@ export function validateHeroSlideInput(value: unknown): Validation<HeroSlideInpu
   const imageRef = text(value.imageRef, 1, 200);
   const sortOrder = order(value.sortOrder);
   const isPublished = value.isPublished === undefined ? false : value.isPublished;
-  if (!heading || !description || !buttonLabel || !destinationUrl || !imageRef || !imageReferences.has(imageRef) || sortOrder === null || typeof isPublished !== "boolean") {
+  if (!heading || !description || !buttonLabel || !destinationUrl || !imageRef || (!imageReferences.has(imageRef) && !isManagedGalleryImageRef(imageRef)) || sortOrder === null || typeof isPublished !== "boolean") {
     return { ok: false, message: "Check the slide fields and choose an approved local image and site destination." };
   }
   return { ok: true, value: { heading, description, buttonLabel, destinationUrl, imageRef, sortOrder, isPublished } };
@@ -62,7 +64,7 @@ export function validateHeroSlidePatch(value: unknown): Validation<Partial<HeroS
   for (const key of ["heading", "description", "buttonLabel", "destinationUrl", "imageRef"] as const) {
     if (!(key in value)) continue;
     const item = key === "destinationUrl" ? destination(value[key]) : text(value[key], key === "description" ? 10 : 2, limits[key]);
-    if (!item || (key === "imageRef" && !imageReferences.has(item))) return { ok: false, message: "Check the slide fields and choose an approved local image and site destination." };
+    if (!item || (key === "imageRef" && !imageReferences.has(item) && !isManagedGalleryImageRef(item))) return { ok: false, message: "Check the slide fields and choose an approved local image and site destination." };
     result[key] = item;
   }
   if ("sortOrder" in value) {

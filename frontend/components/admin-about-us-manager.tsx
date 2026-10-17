@@ -1,6 +1,7 @@
 "use client";
 
 import { FormEvent, useEffect, useId, useState } from "react";
+import { AdminGalleryImageField } from "./admin-gallery-image-field";
 
 type AboutUs = {
   eyebrow: string;
@@ -33,8 +34,8 @@ export function AdminAboutUsManager() {
   useEffect(() => {
     fetch("/api/admin/about-us", { credentials: "same-origin", cache: "no-store" }).then(async (response) => {
       if (!response.ok) throw new Error(await responseError(response));
-      const body = await response.json();
-      setAboutUs(body.aboutUs);
+      const result = await response.json();
+      setAboutUs(result.aboutUs);
     }).catch((cause: unknown) => setError(cause instanceof Error ? cause.message : "About Us content could not be loaded."))
       .finally(() => setLoading(false));
   }, []);
@@ -42,6 +43,7 @@ export function AdminAboutUsManager() {
   async function save(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     const form = new FormData(event.currentTarget);
+    const uploadToken = String(form.get("imageUploadToken") ?? "");
     const content: AboutUs = {
       eyebrow: String(form.get("eyebrow") ?? ""),
       heading: String(form.get("heading") ?? ""),
@@ -53,6 +55,11 @@ export function AdminAboutUsManager() {
       destinationUrl: String(form.get("destinationUrl") ?? ""),
       isVisible: form.get("isVisible") === "on",
     };
+    const body: Record<string, unknown> = { ...content };
+    body.expectedImageRef = String(form.get("initialImageRef") ?? "");
+    if (uploadToken) {
+      body.imageUploadToken = uploadToken;
+    }
     setSaving(true);
     setError("");
     setMessage("");
@@ -61,11 +68,11 @@ export function AdminAboutUsManager() {
         method: "PUT",
         credentials: "same-origin",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(content),
+        body: JSON.stringify(body),
       });
       if (!response.ok) throw new Error(await responseError(response));
-      const body = await response.json();
-      setAboutUs(body.aboutUs);
+      const result = await response.json();
+      setAboutUs(result.aboutUs);
       setMessage("About Us section saved.");
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : "About Us content could not be saved.");
@@ -87,7 +94,7 @@ export function AdminAboutUsManager() {
       <AboutUsField label="Main heading" name="heading" defaultValue={aboutUs.heading} maxLength={200} required />
       <AboutUsField label="First paragraph" name="firstParagraph" defaultValue={aboutUs.firstParagraph} maxLength={2000} required multiline />
       <AboutUsField label="Second paragraph" name="secondParagraph" defaultValue={aboutUs.secondParagraph} maxLength={2000} required multiline />
-      <AboutUsField label="Event image URL" name="imageUrl" defaultValue={aboutUs.imageUrl} maxLength={1000} required />
+      <AdminGalleryImageField prefix="about-us" label="Replace event image" currentImageRef={aboutUs.imageUrl} initialImageRef={aboutUs.imageUrl} imageFieldName="imageUrl" chooseImageLabel="Choose replacement image" disabled={saving} />
       <AboutUsField label="Image caption" name="imageCaption" defaultValue={aboutUs.imageCaption} maxLength={200} required />
       <AboutUsField label="Button label" name="buttonLabel" defaultValue={aboutUs.buttonLabel} maxLength={80} required />
       <AboutUsField label="Button destination URL" name="destinationUrl" defaultValue={aboutUs.destinationUrl} maxLength={300} required />
@@ -95,7 +102,7 @@ export function AdminAboutUsManager() {
         <span>Show About Us section on the homepage</span>
         <input type="checkbox" name="isVisible" defaultChecked={aboutUs.isVisible} />
       </label>
-      <p className="admin-field-hint">Use a root-relative image path, such as /images/gathering-study.svg, or a secure https image URL. Button destinations must be site paths, such as /about.</p>
+      <p className="admin-field-hint">Upload a JPEG, PNG, or WebP image to replace the current event photograph. Button destinations must be site paths, such as /about.</p>
       <div className="admin-form-actions"><button className="button button-dark" type="submit" disabled={saving}>{saving ? "Saving…" : "Save About Us section"}</button></div>
     </form>
   </section>;

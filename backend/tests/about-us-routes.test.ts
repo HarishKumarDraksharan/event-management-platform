@@ -1,7 +1,14 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const { prisma, requireAdmin, requireSameOrigin } = vi.hoisted(() => ({
-  prisma: { aboutUsSection: { findUnique: vi.fn(), upsert: vi.fn() } },
+  prisma: {
+    aboutUsSection: { findUnique: vi.fn(), findFirst: vi.fn(), upsert: vi.fn() },
+    portfolioEntry: { findFirst: vi.fn() },
+    heroSlide: { findFirst: vi.fn() },
+    service: { findFirst: vi.fn() },
+    $executeRaw: vi.fn(),
+    $transaction: vi.fn(),
+  },
   requireAdmin: vi.fn(),
   requireSameOrigin: vi.fn(),
 }));
@@ -19,6 +26,15 @@ describe("About Us API handlers", () => {
     vi.clearAllMocks();
     requireAdmin.mockResolvedValue({ ok: true, admin: { userId: "admin-id", email: "admin@example.org", name: "Admin" } });
     requireSameOrigin.mockReturnValue(null);
+    prisma.$executeRaw.mockResolvedValue(1);
+    prisma.aboutUsSection.findUnique.mockResolvedValue({ id: "home", imageUrl: defaultAboutUs.imageUrl });
+    prisma.$transaction.mockImplementation((callback) => callback({
+      $executeRaw: prisma.$executeRaw,
+      aboutUsSection: prisma.aboutUsSection,
+      portfolioEntry: prisma.portfolioEntry,
+      heroSlide: prisma.heroSlide,
+      service: prisma.service,
+    }));
   });
 
   it("reads public About Us content from Prisma", async () => {

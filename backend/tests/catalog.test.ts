@@ -26,4 +26,11 @@ describe("service and portfolio validation", () => {
     expect(validateServicePatch({ imageRef: "/images/../../private.svg" }).ok).toBe(false);
     expect(validateServicePatch({ imageRef: null })).toMatchObject({ ok: true, value: { imageRef: null } });
   });
+
+  it("accepts safe managed image references for services without allowing arbitrary upload paths", () => {
+    const imageRef = "/api/uploads/3fc6ab10-811a-46d9-a817-f1780e9e91ec.webp";
+    expect(validateServiceInput({ ...service, imageRef }).ok).toBe(true);
+    expect(validateServicePatch({ imageRef }).ok).toBe(true);
+    expect(validateServicePatch({ imageRef: "/api/uploads/not-an-image.png" }).ok).toBe(false);
+  });
 });

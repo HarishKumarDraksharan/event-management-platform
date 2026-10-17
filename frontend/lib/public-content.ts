@@ -68,6 +68,20 @@ export type PublicHomepageWhyChooseUs = {
   featureCards: PublicHomepageFeature[];
 };
 
+export type PublicHomepageGalleryEntry = {
+  id: string;
+  title: string;
+  imageRef: string;
+  altText: string;
+};
+
+export type PublicHomepageGallery = {
+  eyebrow: string;
+  heading: string;
+  isVisible: boolean;
+  entries: PublicHomepageGalleryEntry[];
+};
+
 export const defaultHomepageIntroduction: PublicHomepageIntroduction = {
   eyebrow: "TSG EVENTS · EVENT PLANNING",
   heading: "Big days, little details,",
@@ -75,7 +89,7 @@ export const defaultHomepageIntroduction: PublicHomepageIntroduction = {
   description: "Every gathering has its own rhythm. We help bring the people, place and many moving pieces together, so the experience feels considered from the first welcome to the last goodbye.",
 };
 
-async function publicApi<T>(path: string, key: "services" | "entries" | "slides" | "introduction" | "aboutUs" | "section" | "whyChooseUs"): Promise<T[] | T | null> {
+async function publicApi<T>(path: string, key: "services" | "entries" | "slides" | "introduction" | "aboutUs" | "section" | "whyChooseUs" | "gallery"): Promise<T[] | T | null> {
   try {
     const baseUrl = process.env.BACKEND_INTERNAL_URL ?? "http://backend:3001";
     const response = await fetch(`${baseUrl}/api/${path}`, { cache: "no-store" });
@@ -83,7 +97,7 @@ async function publicApi<T>(path: string, key: "services" | "entries" | "slides"
     const data: unknown = await response.json();
     if (!data || typeof data !== "object" || !(key in data)) return null;
     const value = (data as Record<string, unknown>)[key];
-    if (key === "introduction" || key === "aboutUs" || key === "section") return value as T;
+    if (key === "introduction" || key === "aboutUs" || key === "section" || key === "gallery") return value as T;
     return Array.isArray(value) ? value as T[] : null;
   } catch {
     return null;
@@ -97,3 +111,43 @@ export const getPublicHomepageIntroduction = () => publicApi<PublicHomepageIntro
 export const getPublicAboutUs = () => publicApi<PublicAboutUs>("about-us", "aboutUs") as Promise<PublicAboutUs | null>;
 export const getPublicHomepageServices = () => publicApi<PublicHomepageServices>("homepage-services", "section") as Promise<PublicHomepageServices | null>;
 export const getPublicHomepageWhyChooseUs = () => publicApi<PublicHomepageWhyChooseUs>("homepage-why-choose-us", "section") as Promise<PublicHomepageWhyChooseUs | null>;
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return value !== null && typeof value === "object" && !Array.isArray(value);
+}
+
+function isNonEmptyString(value: unknown): value is string {
+  return typeof value === "string" && value.trim().length > 0;
+}
+
+export async function getPublicHomepageGallery(): Promise<PublicHomepageGallery | null> {
+  try {
+    const baseUrl = process.env.BACKEND_INTERNAL_URL ?? "http://backend:3001";
+    const response = await fetch(`${baseUrl}/api/homepage-gallery`, { cache: "no-store" });
+    if (!response.ok) return null;
+    const data: unknown = await response.json();
+    if (!isRecord(data) || !isRecord(data.section) || !Array.isArray(data.entries)) return null;
+
+    const { eyebrow, heading, isVisible } = data.section;
+    if (!isNonEmptyString(eyebrow) || !isNonEmptyString(heading) || typeof isVisible !== "boolean") return null;
+
+    const entries: PublicHomepageGalleryEntry[] = [];
+    for (const value of data.entries) {
+      if (!isRecord(value)
+        || !isNonEmptyString(value.id)
+        || !isNonEmptyString(value.title)
+        || !isNonEmptyString(value.imageRef)
+        || !isNonEmptyString(value.altText)) return null;
+      entries.push({
+        id: value.id,
+        title: value.title,
+        imageRef: value.imageRef,
+        altText: value.altText,
+      });
+    }
+
+    return { eyebrow, heading, isVisible, entries };
+  } catch {
+    return null;
+  }
+}

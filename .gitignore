@@ -13,6 +13,7 @@ coverage/
 *.tsbuildinfo
 frontend/generated/
 backend/generated/
+backend/uploads/
 
 # Editor and OS files
 .vscode/

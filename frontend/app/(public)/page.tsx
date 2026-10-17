@@ -2,15 +2,17 @@ import { AboutUsSection } from "../../components/about-us-section";
 import { HeroCarousel } from "../../components/hero-carousel";
 import { HomepageServicesSection } from "../../components/homepage-services-section";
 import { HomepageWhyChooseUsSection } from "../../components/homepage-why-choose-us-section";
-import { getPublicAboutUs, getPublicHeroSlides, getPublicHomepageServices, getPublicHomepageWhyChooseUs, getPublicServices } from "../../lib/public-content";
+import { HomepageGallerySection } from "../../components/homepage-gallery-section";
+import { getPublicAboutUs, getPublicHeroSlides, getPublicHomepageGallery, getPublicHomepageServices, getPublicHomepageWhyChooseUs, getPublicServices } from "../../lib/public-content";
 
 export default async function Home() {
-  const [heroSlides, aboutUs, homepageServices, services, whyChooseUs] = await Promise.all([
+  const [heroSlides, aboutUs, homepageServices, services, whyChooseUs, gallery] = await Promise.all([
     getPublicHeroSlides(),
     getPublicAboutUs(),
     getPublicHomepageServices(),
     getPublicServices(),
     getPublicHomepageWhyChooseUs(),
+    getPublicHomepageGallery(),
   ]);
   return (
     <main id="main-content">
@@ -18,6 +20,7 @@ export default async function Home() {
       <AboutUsSection content={aboutUs} />
       <HomepageServicesSection section={homepageServices} services={services} />
       <HomepageWhyChooseUsSection section={whyChooseUs} />
+      <HomepageGallerySection gallery={gallery} />
     </main>
   );
 }

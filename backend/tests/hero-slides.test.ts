@@ -24,6 +24,12 @@ describe("homepage slide validation", () => {
     }
   });
 
+  it("accepts only safe managed upload references for slide images", () => {
+    const managed = "/api/uploads/3fc6ab10-811a-46d9-a817-f1780e9e91ec.png";
+    expect(validateHeroSlideInput({ ...slide, imageRef: managed }).ok).toBe(true);
+    expect(validateHeroSlidePatch({ imageRef: "/api/uploads/../../private.png" }).ok).toBe(false);
+  });
+
   it("validates edits to copy, ordering, and publication state", () => {
     expect(validateHeroSlidePatch({ heading: "Updated heading", sortOrder: 10, isPublished: true })).toMatchObject({ ok: true, value: { heading: "Updated heading", sortOrder: 10, isPublished: true } });
     expect(validateHeroSlidePatch({ isPublished: "true" }).ok).toBe(false);

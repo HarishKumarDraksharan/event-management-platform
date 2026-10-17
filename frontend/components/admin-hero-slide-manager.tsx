@@ -2,13 +2,15 @@
 
 import { FormEvent, useEffect, useId, useState } from "react";
 import { AdminAccordion } from "./admin-accordion";
+import { AdminGalleryImageField } from "./admin-gallery-image-field";
 
 type HeroSlide = { id: string; heading: string; description: string; buttonLabel: string; destinationUrl: string; imageRef: string; isPublished: boolean; sortOrder: number };
 const images = ["/images/gathering-study.svg", "/images/table-study.svg", "/images/colour-study.svg"];
 
 function fields(form: HTMLFormElement) {
   const data = new FormData(form);
-  return {
+  const uploadToken = String(data.get("imageUploadToken") ?? "");
+  const result: Record<string, unknown> = {
     heading: String(data.get("heading") ?? ""),
     description: String(data.get("description") ?? ""),
     buttonLabel: String(data.get("buttonLabel") ?? ""),
@@ -16,7 +18,12 @@ function fields(form: HTMLFormElement) {
     imageRef: String(data.get("imageRef") ?? ""),
     sortOrder: Number(data.get("sortOrder") ?? 0),
     isPublished: data.get("isPublished") === "true",
+    expectedImageRef: String(data.get("initialImageRef") ?? ""),
   };
+  if (uploadToken) {
+    result.imageUploadToken = uploadToken;
+  }
+  return result;
 }
 
 async function responseError(response: Response) {
@@ -30,6 +37,7 @@ export function AdminHeroSlideManager() {
   const [error, setError] = useState("");
   const [message, setMessage] = useState("");
   const [pending, setPending] = useState("");
+  const [createFormKey, setCreateFormKey] = useState(0);
 
   useEffect(() => {
     fetch("/api/admin/hero-slides", { credentials: "same-origin", cache: "no-store" }).then(async (response) => {
@@ -47,6 +55,7 @@ export function AdminHeroSlideManager() {
       if (!response.ok) throw new Error(await responseError(response));
       const { slide } = await response.json();
       setSlides((current) => [...current, slide].sort((a, b) => a.sortOrder - b.sortOrder || a.id.localeCompare(b.id)));
+      setCreateFormKey((current) => current + 1);
       form.reset(); setMessage("Homepage slide created as a draft.");
     } catch (cause) { setError(cause instanceof Error ? cause.message : "Homepage slide could not be saved."); }
     finally { setPending(""); }
@@ -79,8 +88,8 @@ export function AdminHeroSlideManager() {
   }
 
   return <div className="admin-manager"><AdminAccordion className="admin-form-card" title="Add a homepage slide" eyebrow="CREATE CONTENT" status={<span className="admin-accordion-action-label">Add slide</span>}>
-      <p>Slides use checked-in local artwork. New slides are saved as drafts until published.</p>
-      <SlideForm onSubmit={create} submitLabel={pending === "create" ? "Saving…" : "Create slide"} pending={pending === "create"} />
+      <p>Upload an event image for each slide. New slides are saved as drafts until published.</p>
+      <SlideForm key={createFormKey} onSubmit={create} submitLabel={pending === "create" ? "Saving…" : "Create slide"} pending={pending === "create"} />
     </AdminAccordion>
     {message ? <p role="status" className="admin-status">{message}</p> : null}{error ? <p role="alert" className="admin-notice">{error}</p> : null}
     {loading ? <p role="status">Loading homepage slides…</p> : slides.length === 0 ? <section className="admin-empty"><h2>No slides yet.</h2><p>Create and publish a slide to show a homepage hero.</p></section> : <section className="admin-managed-list" aria-label="Homepage slide editors">{slides.map((slide) => <AdminAccordion key={slide.id} eyebrow={`DISPLAY ORDER ${slide.sortOrder}`} title={slide.heading} status={<span className={`admin-state ${slide.isPublished ? "is-active" : "is-inactive"}`}>{slide.isPublished ? "Published" : "Draft"}</span>}>
@@ -95,10 +104,10 @@ function SlideForm({ slide, onSubmit, submitLabel, pending, onToggle, toggleLabe
     <SlideTextField label="Button label" name="buttonLabel" required maxLength={80} defaultValue={slide?.buttonLabel} />
     <SlideTextField label="Description" name="description" required maxLength={500} multiline defaultValue={slide?.description} />
     <SlideTextField label="Destination URL" name="destinationUrl" required maxLength={300} placeholder="/contact" defaultValue={slide?.destinationUrl} />
-    <label className="admin-field">Image reference<select name="imageRef" defaultValue={slide?.imageRef ?? images[0]}>{images.map((image) => <option key={image} value={image}>{image}</option>)}</select></label>
+    <AdminGalleryImageField prefix={`hero-${slide?.id ?? "new"}`} label={slide ? "Replace slide image" : "Upload slide image"} currentImageRef={slide?.imageRef ?? images[0]} initialImageRef={slide?.imageRef ?? ""} chooseImageLabel={slide ? "Choose replacement image" : "Choose slide image"} disabled={pending} />
     <SlideTextField label="Display order" name="sortOrder" type="number" min="0" max="1000" required defaultValue={String(slide?.sortOrder ?? 0)} />
     <label className="admin-field">Publication status<select name="isPublished" defaultValue={String(slide?.isPublished ?? false)}><option value="false">Draft</option><option value="true">Published</option></select></label>
-    <p className="admin-slide-hint">Use a root-relative site path for the button destination. Image choices are approved local sample artwork.</p>
+    <p className="admin-slide-hint">Use a root-relative site path for the button destination. Uploads are saved only when you save the slide.</p>
     <div className="admin-form-actions"><button className="button button-dark" disabled={pending}>{submitLabel}</button>{onToggle && toggleLabel ? <button className="button button-light" type="button" disabled={pending} onClick={onToggle}>{toggleLabel}</button> : null}</div>
   </form>;
 }
