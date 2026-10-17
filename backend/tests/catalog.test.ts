@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { validatePortfolioInput, validatePortfolioPatch, validateServiceInput, validateServicePatch } from "../lib/catalog";
 
-const service = { slug: "weddings", title: "Weddings", kicker: "A considered day", description: "A service description long enough to be accepted.", detail: "A service detail long enough to be accepted.", sortOrder: 1 };
+const service = { slug: "weddings", title: "Weddings", kicker: "A considered day", description: "A service description long enough to be accepted.", detail: "A service detail long enough to be accepted.", imageRef: null, sortOrder: 1 };
 const entry = { title: "Gathering study", description: "A sample illustration for a planned celebration.", imageRef: "/images/gathering-study.svg", altText: "Illustration of an event table", sortOrder: 1 };
 
 describe("service and portfolio validation", () => {
@@ -18,5 +18,12 @@ describe("service and portfolio validation", () => {
     expect(validatePortfolioInput({ ...entry, imageRef: "/images/../../private.png" }).ok).toBe(false);
     expect(validatePortfolioPatch({ isPublished: true })).toMatchObject({ ok: true, value: { isPublished: true } });
     expect(validatePortfolioPatch({ isPublished: 1 }).ok).toBe(false);
+  });
+
+  it("validates optional service images against checked-in assets", () => {
+    expect(validateServiceInput({ ...service, imageRef: "/images/table-study.svg" }).ok).toBe(true);
+    expect(validateServiceInput({ ...service, imageRef: "https://example.org/event.jpg" }).ok).toBe(false);
+    expect(validateServicePatch({ imageRef: "/images/../../private.svg" }).ok).toBe(false);
+    expect(validateServicePatch({ imageRef: null })).toMatchObject({ ok: true, value: { imageRef: null } });
   });
 });

@@ -5,6 +5,7 @@ export type PublicService = {
   kicker: string;
   description: string;
   detail: string;
+  imageRef: string | null;
 };
 
 export type PublicPortfolioEntry = {
@@ -45,6 +46,14 @@ export type PublicAboutUs = {
   isVisible: boolean;
 };
 
+export type PublicHomepageServices = {
+  eyebrow: string;
+  heading: string;
+  highlight: string;
+  isVisible: boolean;
+  serviceIds: string[] | null;
+};
+
 export const defaultHomepageIntroduction: PublicHomepageIntroduction = {
   eyebrow: "TSG EVENTS · EVENT PLANNING",
   heading: "Big days, little details,",
@@ -52,7 +61,7 @@ export const defaultHomepageIntroduction: PublicHomepageIntroduction = {
   description: "Every gathering has its own rhythm. We help bring the people, place and many moving pieces together, so the experience feels considered from the first welcome to the last goodbye.",
 };
 
-async function publicApi<T>(path: string, key: "services" | "entries" | "slides" | "introduction" | "aboutUs"): Promise<T[] | T | null> {
+async function publicApi<T>(path: string, key: "services" | "entries" | "slides" | "introduction" | "aboutUs" | "section"): Promise<T[] | T | null> {
   try {
     const baseUrl = process.env.BACKEND_INTERNAL_URL ?? "http://backend:3001";
     const response = await fetch(`${baseUrl}/api/${path}`, { cache: "no-store" });
@@ -60,7 +69,7 @@ async function publicApi<T>(path: string, key: "services" | "entries" | "slides"
     const data: unknown = await response.json();
     if (!data || typeof data !== "object" || !(key in data)) return null;
     const value = (data as Record<string, unknown>)[key];
-    if (key === "introduction" || key === "aboutUs") return value as T;
+    if (key === "introduction" || key === "aboutUs" || key === "section") return value as T;
     return Array.isArray(value) ? value as T[] : null;
   } catch {
     return null;
@@ -72,3 +81,4 @@ export const getPublicPortfolio = () => publicApi<PublicPortfolioEntry>("portfol
 export const getPublicHeroSlides = () => publicApi<PublicHeroSlide>("hero-slides", "slides") as Promise<PublicHeroSlide[] | null>;
 export const getPublicHomepageIntroduction = () => publicApi<PublicHomepageIntroduction>("homepage-introduction", "introduction") as Promise<PublicHomepageIntroduction | null>;
 export const getPublicAboutUs = () => publicApi<PublicAboutUs>("about-us", "aboutUs") as Promise<PublicAboutUs | null>;
+export const getPublicHomepageServices = () => publicApi<PublicHomepageServices>("homepage-services", "section") as Promise<PublicHomepageServices | null>;

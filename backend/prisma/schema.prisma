@@ -8,16 +8,16 @@ datasource db {
 }
 
 model Enquiry {
-  id             String   @id @default(uuid()) @db.Uuid
-  submissionKey  String   @unique @db.Uuid
-  name           String   @db.VarChar(100)
-  email          String   @db.VarChar(254)
-  phone          String?  @db.VarChar(25)
-  eventType      String   @db.VarChar(40)
-  eventDate      DateTime? @db.Date
-  guestCount     Int?
-  message        String   @db.VarChar(3000)
-  createdAt      DateTime @default(now()) @db.Timestamptz(6)
+  id            String    @id @default(uuid()) @db.Uuid
+  submissionKey String    @unique @db.Uuid
+  name          String    @db.VarChar(100)
+  email         String    @db.VarChar(254)
+  phone         String?   @db.VarChar(25)
+  eventType     String    @db.VarChar(40)
+  eventDate     DateTime? @db.Date
+  guestCount    Int?
+  message       String    @db.VarChar(3000)
+  createdAt     DateTime  @default(now()) @db.Timestamptz(6)
 }
 
 model Service {
@@ -27,6 +27,7 @@ model Service {
   kicker      String   @db.VarChar(120)
   description String   @db.VarChar(1000)
   detail      String   @db.VarChar(2000)
+  imageRef    String?  @db.VarChar(200)
   isActive    Boolean  @default(true)
   sortOrder   Int      @default(0)
   createdAt   DateTime @default(now()) @db.Timestamptz(6)
@@ -71,17 +72,27 @@ model HomepageIntroduction {
 }
 
 model AboutUsSection {
-  id             String   @id @default("home") @db.VarChar(20)
-  eyebrow        String   @db.VarChar(120)
-  heading        String   @db.VarChar(200)
-  firstParagraph String   @db.VarChar(2000)
-  secondParagraph String  @db.VarChar(2000)
-  imageUrl       String   @db.VarChar(1000)
-  imageCaption   String   @db.VarChar(200)
-  buttonLabel    String   @db.VarChar(80)
-  destinationUrl String   @db.VarChar(300)
-  isVisible      Boolean  @default(true)
-  updatedAt      DateTime @default(now()) @updatedAt @db.Timestamptz(6)
+  id              String   @id @default("home") @db.VarChar(20)
+  eyebrow         String   @db.VarChar(120)
+  heading         String   @db.VarChar(200)
+  firstParagraph  String   @db.VarChar(2000)
+  secondParagraph String   @db.VarChar(2000)
+  imageUrl        String   @db.VarChar(1000)
+  imageCaption    String   @db.VarChar(200)
+  buttonLabel     String   @db.VarChar(80)
+  destinationUrl  String   @db.VarChar(300)
+  isVisible       Boolean  @default(true)
+  updatedAt       DateTime @default(now()) @updatedAt @db.Timestamptz(6)
+}
+
+model HomepageServicesSection {
+  id         String   @id @default("home") @db.VarChar(20)
+  eyebrow    String   @db.VarChar(120)
+  heading    String   @db.VarChar(200)
+  highlight  String   @db.VarChar(120)
+  isVisible  Boolean  @default(true)
+  serviceIds String[] @default([]) @db.Uuid
+  updatedAt  DateTime @default(now()) @updatedAt @db.Timestamptz(6)
 }
 
 model User {
@@ -123,18 +134,18 @@ model Session {
 model Account {
   id                    String    @id
   accountId             String
-  providerId             String
-  userId                 String
-  user                   User      @relation(fields: [userId], references: [id], onDelete: Cascade)
-  accessToken            String?
-  refreshToken           String?
-  idToken                String?
-  accessTokenExpiresAt   DateTime?
-  refreshTokenExpiresAt  DateTime?
-  scope                  String?
-  password               String?
-  createdAt              DateTime  @default(now())
-  updatedAt              DateTime  @updatedAt
+  providerId            String
+  userId                String
+  user                  User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  accessToken           String?
+  refreshToken          String?
+  idToken               String?
+  accessTokenExpiresAt  DateTime?
+  refreshTokenExpiresAt DateTime?
+  scope                 String?
+  password              String?
+  createdAt             DateTime  @default(now())
+  updatedAt             DateTime  @updatedAt
 
   @@index([userId])
   @@map("account")

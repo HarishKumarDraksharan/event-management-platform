@@ -100,3 +100,19 @@
 .admin-accordion-content .admin-accordion-content>p{margin-top:0}
 @media(max-width:560px){.admin-accordion{padding:20px}.admin-accordion-trigger{gap:10px}.admin-accordion-title{font-size:clamp(24px,7vw,30px)!important}.admin-accordion-status .admin-state{margin:0}.admin-accordion-action-label{font-size:13px;padding:7px 9px}.admin-accordion-chevron{width:30px;height:30px;flex-basis:30px}}
 @media(max-width:767px){.admin-homepage-section-grid,.admin-dashboard-grid{grid-template-columns:1fr}.admin-homepage-section-card{min-height:170px}.admin-dashboard-card{min-height:150px}}
+.admin-homepage-services-form{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:18px;margin-top:22px}
+.admin-homepage-services-selection,.admin-homepage-services-order{min-width:0;padding:18px;border:1px solid var(--line);background:#fff}
+.admin-homepage-services-selection legend,.admin-homepage-services-order legend{padding:0 7px;color:#344237;font-size:15px;font-weight:700}
+.admin-homepage-service-option{min-height:48px;display:flex;align-items:center;gap:12px;border-bottom:1px solid var(--line);font-size:15px}
+.admin-homepage-service-option:last-child{border-bottom:0}
+.admin-homepage-service-option input{width:20px;height:20px;flex:none;accent-color:var(--green)}
+.admin-homepage-service-option>span:nth-of-type(1){flex:1}
+.admin-homepage-services-order ol{margin:0;padding:0;list-style:none}
+.admin-homepage-services-order li{min-height:48px;display:flex;align-items:center;justify-content:space-between;gap:12px;border-bottom:1px solid var(--line);font-size:15px}
+.admin-homepage-services-order li:last-child{border-bottom:0}
+.admin-homepage-service-order-actions{display:flex;gap:6px}
+.admin-homepage-service-order-actions button{width:36px;height:36px;border:1px solid #c9cbc2;background:var(--paper);color:var(--green);cursor:pointer}
+.admin-homepage-service-order-actions button:disabled{opacity:.45;cursor:not-allowed}
+.admin-homepage-services-form>.admin-about-visibility,.admin-homepage-services-form>.admin-form-actions{grid-column:1/-1}
+.admin-homepage-services-form>.admin-form-actions{margin-top:0}
+@media(max-width:767px){.admin-homepage-services-form{grid-template-columns:1fr}.admin-homepage-services-form>.admin-about-visibility,.admin-homepage-services-form>.admin-form-actions{grid-column:auto}}

@@ -5,7 +5,7 @@ export async function GET() {
     const services = await prisma.service.findMany({
       where: { isActive: true },
       orderBy: [{ sortOrder: "asc" }, { title: "asc" }],
-      select: { id: true, slug: true, title: true, kicker: true, description: true, detail: true },
+      select: { id: true, slug: true, title: true, kicker: true, description: true, detail: true, imageRef: true },
     });
     return Response.json({ services }, { headers: { "Cache-Control": "no-store" } });
   } catch {

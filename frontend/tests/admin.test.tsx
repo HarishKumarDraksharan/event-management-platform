@@ -7,6 +7,7 @@ import { AdminServiceManager } from "../components/admin-service-manager";
 import { AdminPortfolioManager } from "../components/admin-portfolio-manager";
 import { AdminHeroSlideManager } from "../components/admin-hero-slide-manager";
 import { AdminHomepageIntroductionManager } from "../components/admin-homepage-introduction-manager";
+import { AdminHomepageServicesManager } from "../components/admin-homepage-services-manager";
 import AdminDashboard from "../app/(panel)/admin/page";
 import AdminHomepagePage from "../app/(panel)/admin/homepage/page";
 import AdminAboutUsPage from "../app/(panel)/admin/about-us/page";
@@ -56,7 +57,42 @@ describe("admin content overview", () => {
     const section = screen.getByRole("region", { name: "Homepage Sections" });
     expect(within(section).getByRole("link", { name: /hero carousel/i }).getAttribute("href")).toBe("/admin/hero-slides");
     expect(within(section).getByRole("link", { name: /about us/i }).getAttribute("href")).toBe("/admin/about-us");
-    expect(section.querySelectorAll("a")).toHaveLength(2);
+    expect(within(section).getByRole("link", { name: /services/i }).getAttribute("href")).toBe("/admin/homepage-services");
+    expect(section.querySelectorAll("a")).toHaveLength(3);
+  });
+
+  it("selects and reorders services and persists homepage section settings", async () => {
+    const serviceRows = [
+      { id: "00000000-0000-4000-8000-000000000001", slug: "weddings", title: "Weddings", isActive: true, sortOrder: 1 },
+      { id: "00000000-0000-4000-8000-000000000002", slug: "corporate-events", title: "Corporate events", isActive: true, sortOrder: 2 },
+      { id: "00000000-0000-4000-8000-000000000003", slug: "birthdays", title: "Birthdays", isActive: false, sortOrder: 3 },
+    ];
+    const initialSection = { eyebrow: "What We Do", heading: "Top Event Planning Services in Chennai", highlight: "Event Planning Services", isVisible: true };
+    let savedIds = [serviceRows[0].id, serviceRows[1].id];
+    const fetchMock = vi.fn(async (_input: RequestInfo | URL, init?: RequestInit) => {
+      if (!init?.method) return { ok: true, json: async () => ({ section: initialSection, serviceIds: savedIds, services: serviceRows }) };
+      const body = JSON.parse(String(init.body));
+      savedIds = body.serviceIds;
+      return { ok: true, json: async () => ({ section: body, serviceIds: savedIds }) };
+    });
+    vi.stubGlobal("fetch", fetchMock);
+    render(<AdminHomepageServicesManager />);
+    await waitFor(() => expect(screen.getByRole("heading", { name: "Edit homepage Services section" })).toBeTruthy());
+    fireEvent.click(screen.getByRole("button", { name: "Move Corporate events up" }));
+    fireEvent.click(screen.getByRole("checkbox", { name: "Select Birthdays" }));
+    fireEvent.change(screen.getByLabelText("Section heading"), { target: { value: "Our event services in Chennai" } });
+    fireEvent.submit(screen.getByRole("button", { name: "Save Services section" }).closest("form")!);
+    await waitFor(() => expect(screen.getByRole("status").textContent).toBe("Homepage services section saved."));
+    expect(savedIds).toEqual([serviceRows[1].id, serviceRows[0].id, serviceRows[2].id]);
+    expect(fetchMock).toHaveBeenCalledWith("/api/admin/homepage-services", expect.objectContaining({
+      method: "PUT",
+      credentials: "same-origin",
+      body: JSON.stringify({
+        ...initialSection,
+        heading: "Our event services in Chennai",
+        serviceIds: [serviceRows[1].id, serviceRows[0].id, serviceRows[2].id],
+      }),
+    }));
   });
 
   it("provides a persistent About Us editor and links to the public page", async () => {
@@ -198,8 +234,8 @@ describe("service editor field labels", () => {
     vi.stubGlobal("fetch", vi.fn().mockResolvedValue({
       ok: true,
       json: async () => ({ services: [
-        { id: "service-one", slug: "weddings", title: "Weddings", kicker: "Kicker one", description: "Description one", detail: "Detail one", isActive: true, sortOrder: 1 },
-        { id: "service-two", slug: "corporate", title: "Corporate", kicker: "Kicker two", description: "Description two", detail: "Detail two", isActive: true, sortOrder: 2 },
+        { id: "service-one", slug: "weddings", title: "Weddings", kicker: "Kicker one", description: "Description one", detail: "Detail one", imageRef: null, isActive: true, sortOrder: 1 },
+        { id: "service-two", slug: "corporate", title: "Corporate", kicker: "Kicker two", description: "Description two", detail: "Detail two", imageRef: null, isActive: true, sortOrder: 2 },
       ] }),
     }));
 
@@ -215,7 +251,7 @@ describe("service editor field labels", () => {
   });
 
   it("keeps service create, edit, and activation actions available in collapsed sections", async () => {
-    const existing = { id: "service-one", slug: "weddings", title: "Weddings", kicker: "Kicker", description: "A service description", detail: "Service details", isActive: true, sortOrder: 1 };
+    const existing = { id: "service-one", slug: "weddings", title: "Weddings", kicker: "Kicker", description: "A service description", detail: "Service details", imageRef: null, isActive: true, sortOrder: 1 };
     let saved = existing;
     const fetchMock = vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
       if (!init?.method) return { ok: true, json: async () => ({ services: [saved] }) };

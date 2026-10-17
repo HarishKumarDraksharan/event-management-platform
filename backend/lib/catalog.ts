@@ -4,6 +4,7 @@ export type ServiceInput = {
   kicker: string;
   description: string;
   detail: string;
+  imageRef: string | null;
   sortOrder: number;
 };
 
@@ -22,6 +23,7 @@ const imageReferences = new Set([
   "/images/table-study.svg",
   "/images/colour-study.svg",
 ]);
+const serviceImageReferences = new Set(imageReferences);
 
 function objectValue(value: unknown): value is Record<string, unknown> {
   return value !== null && typeof value === "object" && !Array.isArray(value);
@@ -42,16 +44,17 @@ export function validateServiceInput(value: unknown): Validation<ServiceInput> {
   const kicker = text(value.kicker, 2, 120);
   const description = text(value.description, 10, 1000);
   const detail = text(value.detail, 10, 2000);
+  const imageRef = value.imageRef === undefined || value.imageRef === null || value.imageRef === "" ? null : text(value.imageRef, 1, 200);
   const order = sortOrder(value.sortOrder);
-  if (!slug || !/^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(slug) || !title || !kicker || !description || !detail || order === null) {
+  if (!slug || !/^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(slug) || !title || !kicker || !description || !detail || (imageRef !== null && !serviceImageReferences.has(imageRef)) || order === null) {
     return { ok: false, message: "Check the service fields and try again." };
   }
-  return { ok: true, value: { slug, title, kicker, description, detail, sortOrder: order } };
+  return { ok: true, value: { slug, title, kicker, description, detail, imageRef, sortOrder: order } };
 }
 
 export function validateServicePatch(value: unknown): Validation<Partial<ServiceInput> & { isActive?: boolean }> {
   if (!objectValue(value) || Object.keys(value).length === 0) return { ok: false, message: "At least one valid service field is required." };
-  const allowed = new Set(["slug", "title", "kicker", "description", "detail", "sortOrder", "isActive"]);
+  const allowed = new Set(["slug", "title", "kicker", "description", "detail", "imageRef", "sortOrder", "isActive"]);
   if (Object.keys(value).some((key) => !allowed.has(key))) return { ok: false, message: "Check the service fields and try again." };
   const result: Partial<ServiceInput> & { isActive?: boolean } = {};
   for (const key of ["slug", "title", "kicker", "description", "detail"] as const) {
@@ -60,6 +63,14 @@ export function validateServicePatch(value: unknown): Validation<Partial<Service
       const item = text(value[key], limits[0], limits[1]);
       if (!item || (key === "slug" && !/^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(item))) return { ok: false, message: "Check the service fields and try again." };
       result[key] = item;
+    }
+    if ("imageRef" in value) {
+      if (value.imageRef === null || value.imageRef === "") result.imageRef = null;
+      else {
+        const imageRef = text(value.imageRef, 1, 200);
+        if (!imageRef || !serviceImageReferences.has(imageRef)) return { ok: false, message: "Choose an approved local service image." };
+        result.imageRef = imageRef;
+      }
     }
   }
   if ("sortOrder" in value) {
