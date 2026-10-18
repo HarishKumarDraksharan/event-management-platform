@@ -7,6 +7,14 @@ export type HomepageGalleryInput = {
   entryIds: string[];
 };
 
+export type HomepageTestimonialInput = {
+  eyebrow: string;
+  heading: string;
+  description: string;
+  isVisible: boolean;
+  testimonialIds: string[];
+};
+
 type Validation<T> = { ok: true; value: T } | { ok: false; message: string };
 
 export const defaultHomepageGallery: Omit<HomepageGalleryInput, "entryIds"> = {

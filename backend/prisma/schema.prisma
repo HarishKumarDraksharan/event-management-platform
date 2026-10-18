@@ -113,6 +113,33 @@ model HomepageGallerySection {
   updatedAt  DateTime @default(now()) @updatedAt @db.Timestamptz(6)
 }
 
+model HomepageTestimonialsSection {
+  id             String   @id @default("home") @db.VarChar(20)
+  eyebrow        String   @db.VarChar(80)
+  heading        String   @db.VarChar(200)
+  description    String   @db.VarChar(500)
+  isVisible      Boolean  @default(true)
+  testimonialIds String[] @default([]) @db.Uuid
+  updatedAt      DateTime @default(now()) @updatedAt @db.Timestamptz(6)
+}
+
+model Testimonial {
+  id          String   @id @default(uuid()) @db.Uuid
+  name        String   @db.VarChar(120)
+  text        String   @db.VarChar(1000)
+  eventType   String?  @db.VarChar(100)
+  eventDate   String?  @db.VarChar(40)
+  rating      Int?     @db.SmallInt
+  label       String?  @db.VarChar(80)
+  imageRef    String?  @db.VarChar(200)
+  isPublished Boolean  @default(false)
+  sortOrder   Int      @default(0)
+  createdAt   DateTime @default(now()) @db.Timestamptz(6)
+  updatedAt   DateTime @default(now()) @updatedAt @db.Timestamptz(6)
+
+  @@index([isPublished, sortOrder])
+}
+
 model User {
   id            String    @id
   name          String

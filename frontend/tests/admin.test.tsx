@@ -64,7 +64,8 @@ describe("admin content overview", () => {
     expect(within(section).getByRole("link", { name: /services/i }).getAttribute("href")).toBe("/admin/homepage-services");
     expect(within(section).getByRole("link", { name: /why choose us/i }).getAttribute("href")).toBe("/admin/homepage-why-choose-us");
     expect(within(section).getByRole("link", { name: /our gallery/i }).getAttribute("href")).toBe("/admin/homepage-gallery");
-    expect(section.querySelectorAll("a")).toHaveLength(5);
+    expect(within(section).getByRole("link", { name: /testimonials/i }).getAttribute("href")).toBe("/admin/homepage-testimonials");
+    expect(section.querySelectorAll("a")).toHaveLength(6);
   });
 
   it("selects and orders published, unpublished, and sample gallery entries", async () => {

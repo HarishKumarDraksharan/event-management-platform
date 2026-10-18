@@ -82,6 +82,25 @@ export type PublicHomepageGallery = {
   entries: PublicHomepageGalleryEntry[];
 };
 
+export type PublicHomepageTestimonial = {
+  id: string;
+  name: string;
+  text: string;
+  eventType: string | null;
+  eventDate: string | null;
+  rating: number | null;
+  label: string | null;
+  imageRef: string | null;
+};
+
+export type PublicHomepageTestimonials = {
+  eyebrow: string;
+  heading: string;
+  description: string;
+  isVisible: boolean;
+  testimonials: PublicHomepageTestimonial[];
+};
+
 export const defaultHomepageIntroduction: PublicHomepageIntroduction = {
   eyebrow: "TSG EVENTS · EVENT PLANNING",
   heading: "Big days, little details,",
@@ -111,6 +130,34 @@ export const getPublicHomepageIntroduction = () => publicApi<PublicHomepageIntro
 export const getPublicAboutUs = () => publicApi<PublicAboutUs>("about-us", "aboutUs") as Promise<PublicAboutUs | null>;
 export const getPublicHomepageServices = () => publicApi<PublicHomepageServices>("homepage-services", "section") as Promise<PublicHomepageServices | null>;
 export const getPublicHomepageWhyChooseUs = () => publicApi<PublicHomepageWhyChooseUs>("homepage-why-choose-us", "section") as Promise<PublicHomepageWhyChooseUs | null>;
+export const getPublicHomepageTestimonials = async () => {
+  try {
+    const baseUrl = process.env.BACKEND_INTERNAL_URL ?? "http://backend:3001";
+    const response = await fetch(`${baseUrl}/api/homepage-testimonials`, { cache: "no-store" });
+    if (!response.ok) return null;
+    const data: unknown = await response.json();
+    if (!isRecord(data) || !isRecord(data.section) || !Array.isArray(data.testimonials)) return null;
+    const { eyebrow, heading, description, isVisible } = data.section;
+    if (!isNonEmptyString(eyebrow) || !isNonEmptyString(heading) || !isNonEmptyString(description) || typeof isVisible !== "boolean") return null;
+    const testimonials: PublicHomepageTestimonial[] = [];
+    for (const value of data.testimonials) {
+      if (!isRecord(value) || !isNonEmptyString(value.id) || !isNonEmptyString(value.name) || !isNonEmptyString(value.text)) return null;
+      testimonials.push({
+        id: String(value.id),
+        name: String(value.name),
+        text: String(value.text),
+        eventType: typeof value.eventType === "string" ? value.eventType : null,
+        eventDate: typeof value.eventDate === "string" ? value.eventDate : null,
+        rating: typeof value.rating === "number" ? value.rating : null,
+        label: typeof value.label === "string" ? value.label : null,
+        imageRef: typeof value.imageRef === "string" ? value.imageRef : null,
+      });
+    }
+    return { eyebrow, heading, description, isVisible, testimonials };
+  } catch {
+    return null;
+  }
+};
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return value !== null && typeof value === "object" && !Array.isArray(value);

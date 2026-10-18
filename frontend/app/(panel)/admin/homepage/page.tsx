@@ -9,6 +9,7 @@ const sections = [
   { number: "SECTION 3", title: "Services", href: "/admin/homepage-services", description: "Choose services, adjust their order, and manage section visibility." },
   { number: "SECTION 4", title: "Why Choose Us", href: "/admin/homepage-why-choose-us", description: "Edit the section story, feature cards, icons, order, and visibility." },
   { number: "SECTION 5", title: "Our Gallery", href: "/admin/homepage-gallery", description: "Choose and arrange published gallery moments for the homepage." },
+  { number: "SECTION 6", title: "Testimonials", href: "/admin/homepage-testimonials", description: "Manage testimonial content, publication state, and homepage placement." },
 ];
 
 export default function AdminHomepagePage() {
