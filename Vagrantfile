@@ -2,7 +2,7 @@ Vagrant.configure("2") do |config|
   config.vm.box = "ubuntu/jammy64"
   config.vm.hostname = "event-management-dev"
   config.vm.network "private_network", ip: "192.168.56.18"
-  config.vm.network "forwarded_port", guest: 80, host: 8080, host_ip: "127.0.0.1"
+  config.vm.network "forwarded_port", guest: 80, host: 8080, host_ip: "0.0.0.0"
   config.vm.synced_folder ".", "/home/vagrant/event-management-platform"
 
   config.vm.provider "virtualbox" do |virtualbox|

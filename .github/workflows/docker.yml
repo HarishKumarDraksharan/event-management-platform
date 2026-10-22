@@ -13,16 +13,18 @@ permissions:
 
 jobs:
   build-and-publish:
-    name: Build production Docker images (publishing disabled)
+    name: Build and push Docker images
     runs-on: ubuntu-latest
     permissions:
       contents: read
+
     env:
       POSTGRES_DB: event_management
       POSTGRES_USER: event_app
       POSTGRES_PASSWORD: ci_password
       BETTER_AUTH_URL: http://localhost:8080
       BETTER_AUTH_SECRET: ci-only-secret-not-used-outside-this-workflow-000000000000
+
     steps:
       - name: Check out repository
         uses: actions/checkout@v4
@@ -36,29 +38,39 @@ jobs:
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
 
-      # Images are built and SHA-tagged for validation. Push and AWS authentication
-      # stay disabled until ECR, OIDC, and production approval are configured.
-      - name: Build frontend production image
+      - name: Login to Docker Hub
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+      - name: Build and push frontend
         uses: docker/build-push-action@v6
         with:
           context: ./frontend
           target: runner
-          push: false
-          tags: tsg-events/frontend:${{ inputs.image_tag }}
+          push: ${{ github.event_name == 'push' && github.ref == 'refs/heads/main' }}
+          tags: |
+            dharishkumar/tsg-frontend:${{ inputs.image_tag }}
+            dharishkumar/tsg-frontend:latest
           labels: org.opencontainers.image.revision=${{ inputs.image_tag }}
           cache-from: type=gha,scope=frontend
           cache-to: type=gha,mode=max,scope=frontend
 
-      - name: Build backend production image
+      - name: Build and push backend
         uses: docker/build-push-action@v6
         with:
           context: ./backend
           target: runner
-          push: false
-          tags: tsg-events/backend:${{ inputs.image_tag }}
+          push: ${{ github.event_name == 'push' && github.ref == 'refs/heads/main' }}
+          tags: |
+            dharishkumar/tsg-backend:${{ inputs.image_tag }}
+            dharishkumar/tsg-backend:latest
           labels: org.opencontainers.image.revision=${{ inputs.image_tag }}
           cache-from: type=gha,scope=backend
           cache-to: type=gha,mode=max,scope=backend
+
 
   deploy-aws:
     name: Deploy to AWS (future scaffold, disabled by default)
